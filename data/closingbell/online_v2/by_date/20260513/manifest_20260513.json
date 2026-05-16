@@ -1,0 +1,104 @@
+{
+  "created_at": "2026-05-14T09:02:47",
+  "target_date": "2026-05-13",
+  "schema": "closingbell.online_v2.v1",
+  "storage_policy": {
+    "intended_repository_path": "bell-dashboard/data/closingbell/online_v2",
+    "github_safe": true,
+    "export_full_daily_parquet": false,
+    "export_full_minute_parquet": false,
+    "export_full_dart_raw": false,
+    "notes": "Small V2 snapshots only; source data remains local."
+  },
+  "v2_top3": {
+    "selected_count": 3,
+    "source": "C:\\Coding\\data\\closingbell\\shared\\v2_candidates\\20260513\\v2_top3_candidates_20260513.csv",
+    "manifest": {
+      "created_at": "2026-05-14T08:56:49",
+      "target_date": "2026-05-13",
+      "status": "ok",
+      "source_mode": "operational_d0_pool_v2_score",
+      "score_variant_id": "D0_POOL_S10_NO_PROGRAM__TOP3",
+      "score_policy": "TOP3_NO_MIN_SCORE",
+      "program_buy_feature_used": false,
+      "program_buy_exclusion_reason": "Program buy data coverage is insufficient for V2 operation.",
+      "fallback_used": false,
+      "min_score": 0.0,
+      "max_candidates": 3,
+      "selected_count": 3,
+      "raw_count": 56,
+      "source_pool": "active_d0_3d_pool",
+      "source_pool_size": 56,
+      "scored_pool_size": 56,
+      "score_base_time": "14:15",
+      "entry_base_time": "15:00",
+      "webhook_send_time": "15:00",
+      "metadata_version": "d0_pool_3d_v2_20260514",
+      "excluded_count": 53,
+      "exclude_reasons": {
+        "outside_top3": 53
+      },
+      "d0_storage_days": 3,
+      "v2_tracking_days": 5,
+      "dashboard_focus_days": 3,
+      "paths": {
+        "candidates_csv": "C:\\Coding\\data\\closingbell\\shared\\v2_candidates\\20260513\\v2_top3_candidates_20260513.csv",
+        "candidates_json": "C:\\Coding\\data\\closingbell\\shared\\v2_candidates\\20260513\\v2_top3_candidates_20260513.json",
+        "excluded_csv": "C:\\Coding\\data\\closingbell\\shared\\v2_candidates\\20260513\\v2_top3_excluded_20260513.csv",
+        "raw_csv": "C:\\Coding\\data\\closingbell\\shared\\v2_candidates\\20260513\\v2_top3_raw_scored_20260513.csv",
+        "dashboard_csv": "C:\\Coding\\data\\closingbell\\shared\\v2_candidates\\20260513\\v2_top3_dashboard_20260513.csv",
+        "report_md": "C:\\Coding\\data\\closingbell\\shared\\v2_candidates\\20260513\\v2_top3_transition_report_20260513.md"
+      },
+      "guards": {
+        "exclude_if_daily_stale": true,
+        "exclude_if_minute_stale": true,
+        "exclude_if_1500_entry_missing": true,
+        "prod_webhook_send_enabled": false,
+        "orders_enabled": false
+      }
+    }
+  },
+  "backdata_1y": {
+    "source": "C:\\Coding\\data\\closingbell\\research_index\\v2_no_program_backdata_1y_20260514\\v2_no_program_backdata_1y_detail_20260514.csv",
+    "daily_summary_source": "C:\\Coding\\data\\closingbell\\research_index\\v2_no_program_backdata_1y_20260514\\v2_no_program_backdata_1y_daily_summary_20260514.csv",
+    "manifest": {
+      "created_at": "2026-05-14T09:02:35",
+      "status": "ok",
+      "end_date": "2026-05-13",
+      "trading_days_requested": 252,
+      "dates_covered": 252,
+      "selected_rows": 753,
+      "complete_d5_rows": 735,
+      "min_score": 0.0,
+      "max_candidates": 3,
+      "source_mode": "classic_d0_pool_3d_v2_score",
+      "source_path": "C:\\Coding\\data\\closingbell\\backtests\\one_year_non_ai_20260514_d0_classic_252d_for_v2\\d0_pool_1y.csv",
+      "score_variant_id": "D0_POOL_S10_NO_PROGRAM__TOP3",
+      "program_buy_feature_used": false,
+      "program_buy_exclusion_reason": "Program buy data coverage is insufficient.",
+      "exclude_reasons": {
+        "outside_top3": 8033,
+        "minute_data_stale_or_missing": 129,
+        "entry_1500_missing": 645
+      },
+      "quick_metrics": {
+        "d1_ge_plus2_rate_pct": 69.8539,
+        "d1_le_minus2_rate_pct": 66.4011,
+        "d5_ge_plus3_rate_pct": 81.9048,
+        "d5_le_minus3_rate_pct": 75.6463
+      },
+      "paths": {
+        "detail_csv": "C:\\Coding\\data\\closingbell\\research_index\\v2_no_program_backdata_1y_20260514\\v2_no_program_backdata_1y_detail_20260514.csv",
+        "excluded_csv": "C:\\Coding\\data\\closingbell\\research_index\\v2_no_program_backdata_1y_20260514\\v2_no_program_backdata_1y_excluded_20260514.csv",
+        "daily_summary_csv": "C:\\Coding\\data\\closingbell\\research_index\\v2_no_program_backdata_1y_20260514\\v2_no_program_backdata_1y_daily_summary_20260514.csv",
+        "report_md": "C:\\Coding\\data\\closingbell\\research_index\\v2_no_program_backdata_1y_20260514\\v2_no_program_backdata_report_20260514.md"
+      }
+    }
+  },
+  "overlays": {
+    "company_info": "stock_mapping.csv + dart/company per current V2 Top3 only",
+    "inst_foreign": "current V2 Top3 latest source row only",
+    "short_sale": "current V2 Top3 latest source row only",
+    "program": "status exported but not used in V2 score"
+  }
+}

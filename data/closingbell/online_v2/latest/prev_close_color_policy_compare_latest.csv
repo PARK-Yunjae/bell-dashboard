@@ -1,0 +1,5 @@
+﻿policy_key,policy_label_ko,sample_n,d5_profit_first_rate_pct,d5_loss_first_rate_pct,profit_minus_loss_pp,fill_pass_rate_pct,avg_score_v2,avg_green_count,avg_yellow_count,avg_orange_count,avg_red_count,avg_gray_count,top_color_path,top_color_path_emoji,top_color_path_label_ko
+V2_FINAL_TOP3,V2 점수제 Top3,66,54.5455,45.4545,9.091,100.0,83.779,0.9091,1.2576,2.0455,0.5606,0.2273,R-O-G-G-O,🔴-🟠-🟢-🟢-🟠,약세-실패-완전강세-완전강세-실패
+P0_TRADING_VALUE_TOP3,P0 거래대금 Top3,66,57.5758,42.4242,15.1516,98.4848,67.9375,0.8333,1.5303,1.9848,0.4091,0.2424,Y-O-Y-O-O,🟡-🟠-🟡-🟠-🟠,회복-실패-회복-실패-실패
+P0_LEGACY_D0_RANK_TOP3,P0 관심도 Top3,66,51.5152,48.4848,3.0304,98.4848,62.238,0.7576,1.5152,1.9091,0.5303,0.2879,Y-O-Y-O-O,🟡-🟠-🟡-🟠-🟠,회복-실패-회복-실패-실패
+D0_POOL_ALL_RECENT_1M,D0 전체 풀,479,41.1273,53.2359,-12.1086,95.8246,,0.6785,1.119,2.1858,0.5658,0.4509,X-X-X-X-X,⚪-⚪-⚪-⚪-⚪,보합/부족-보합/부족-보합/부족-보합/부족-보합/부족

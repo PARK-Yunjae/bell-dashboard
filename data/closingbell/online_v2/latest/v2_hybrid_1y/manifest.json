@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-05-16T21:50:55",
+  "purpose": "Bell dashboard two-page V2 vs HYBRID backdata package",
+  "guardrails": [
+    "research only",
+    "no webhook/scheduler/order/yj_bot changes",
+    "HYBRID_D0_RISK_FILTER does not include true financial health yet"
+  ],
+  "source_files": {
+    "touch_results": "C:\\Coding\\data\\closingbell\\research_index\\webhook_v2_vs_hybrid_switch_compare_20260516\\webhook_v2_vs_hybrid_d1d5_touch_results_1y.csv",
+    "exit_results": "C:\\Coding\\data\\closingbell\\research_index\\d0_1500_non_discretionary_strategy_20260516\\d0_1500_exit_rule_results_1y.parquet",
+    "overlap": "C:\\Coding\\data\\closingbell\\research_index\\webhook_v2_vs_hybrid_switch_compare_20260516\\webhook_v2_vs_hybrid_daily_overlap_1y.csv"
+  },
+  "page_1_signal_board": {
+    "wide_by_date": "v2_hybrid_signal_wide_by_date_1y.csv",
+    "candidate_rows": "v2_hybrid_signal_rows_1y.parquet",
+    "version_summary": "v2_hybrid_signal_version_summary_1y.csv",
+    "month_summary": "v2_hybrid_signal_month_summary_1y.csv"
+  },
+  "page_2_chart_review": {
+    "cases": "v2_hybrid_chart_review_cases_1y.parquet",
+    "daily_candles": "v2_hybrid_chart_review_daily_candles_1y.parquet",
+    "minute_candles": "v2_hybrid_chart_review_minute_candles_d0_d5_1y.parquet"
+  },
+  "row_counts": {
+    "signal_rows": 1512,
+    "wide_dates": 253,
+    "chart_cases": 1512,
+    "daily_candles": 46991,
+    "minute_candles": 1649686
+  }
+}

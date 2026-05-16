@@ -1,0 +1,43 @@
+__pycache__/
+.venv/
+*.pyc
+
+# Streamlit secrets (절대 push 금지: API key, Discord webhook URL, 계좌정보 등)
+.streamlit/secrets.toml
+.env
+.env.*
+
+# 백업 / 임시
+*.bak
+*.bak.*
+*.tmp
+*.swp
+*~
+
+# 로컬 캡처 / 스크린샷
+_capture/
+screenshots/
+
+# 큰 raw 데이터 (절대 GitHub 금지)
+data/market/
+data/dart/
+data/closingbell/backtests/
+data/closingbell/research_index/
+data/closingbell/shared/
+data/closingbell/scheduled/
+data/closingbell/quality/
+data/closingbell/simulations/
+
+# 사용자 개인 메모 (push 금지)
+data/closingbell/user_notes/
+memo/
+
+# GitHub-safe online snapshot exported by bell-data.
+!data/
+!data/closingbell/
+!data/closingbell/online_v2/
+!data/closingbell/online_v2/**
+
+# 운영 산출물 / 발송 로그 (절대 push 금지)
+*sent_log*
+*paper_watch_sent_log*

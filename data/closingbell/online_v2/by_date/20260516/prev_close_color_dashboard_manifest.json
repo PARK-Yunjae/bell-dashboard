@@ -1,0 +1,131 @@
+{
+  "created_at": "2026-05-16T09:44:25",
+  "status": "ok",
+  "run_tag": "20260516",
+  "source_tag": "20260515",
+  "source_manifest": {
+    "created_at": "2026-05-15T22:51:06",
+    "status": "ok",
+    "run_tag": "20260515",
+    "date_range": {
+      "min": "2026-04-09",
+      "max": "2026-05-13",
+      "signal_day_count": 22
+    },
+    "counts": {
+      "cases": 677,
+      "d0_pool_all_recent_1m": 479,
+      "policy_cases": 198,
+      "daily_summary": 88,
+      "pattern_summary": 481,
+      "charts": 677
+    },
+    "color_definition": {
+      "G": {
+        "name": "GREEN",
+        "label_ko": "완전 강세",
+        "emoji": "G",
+        "rgb": [
+          209,
+          245,
+          221
+        ]
+      },
+      "Y": {
+        "name": "YELLOW",
+        "label_ko": "흔들렸지만 회복",
+        "emoji": "Y",
+        "rgb": [
+          255,
+          245,
+          194
+        ]
+      },
+      "O": {
+        "name": "ORANGE",
+        "label_ko": "위로 갔지만 실패",
+        "emoji": "O",
+        "rgb": [
+          255,
+          225,
+          189
+        ]
+      },
+      "R": {
+        "name": "RED",
+        "label_ko": "완전 약세",
+        "emoji": "R",
+        "rgb": [
+          255,
+          209,
+          209
+        ]
+      },
+      "X": {
+        "name": "GRAY",
+        "label_ko": "보합/데이터 부족",
+        "emoji": "X",
+        "rgb": [
+          232,
+          236,
+          240
+        ]
+      }
+    },
+    "inputs": {
+      "p0_v2_detail": "C:\\Coding\\data\\closingbell\\research_index\\p0_value_top3_final_baseline_vs_v2_20260515\\p0_value_top3_final_vs_v2_detail_20260515.csv",
+      "d0_pool_1y": "C:\\Coding\\data\\closingbell\\backtests\\one_year_non_ai_20260514_d0_classic_252d_for_v2\\d0_pool_1y.csv",
+      "daily_root": "C:\\Coding\\data\\market\\daily_ohlcv"
+    },
+    "outputs": {
+      "cases_csv": "C:\\Coding\\data\\closingbell\\research_index\\prev_close_color_review_20260515\\prev_close_color_cases_recent_1m_20260515.csv",
+      "daily_summary_csv": "C:\\Coding\\data\\closingbell\\research_index\\prev_close_color_review_20260515\\prev_close_color_daily_summary_recent_1m_20260515.csv",
+      "pattern_summary_csv": "C:\\Coding\\data\\closingbell\\research_index\\prev_close_color_review_20260515\\prev_close_color_pattern_summary_recent_1m_20260515.csv",
+      "manifest_json": "C:\\Coding\\data\\closingbell\\research_index\\prev_close_color_review_20260515\\prev_close_color_manifest_20260515.json",
+      "charts_dir": "C:\\Coding\\data\\closingbell\\research_index\\prev_close_color_review_20260515\\charts_recent_1m",
+      "report_md": "C:\\Users\\PYJ\\Downloads\\PREV_CLOSE_COLOR_REVIEW_REPORT_KR_20260515.md",
+      "downloads_zip": "C:\\Users\\PYJ\\Downloads\\PREV_CLOSE_COLOR_REVIEW_RECENT_1M_20260515.zip"
+    },
+    "guards": {
+      "operational_v2_scoring_changed": false,
+      "operational_webhook_changed": false,
+      "d0_filter_changed": false,
+      "order_api_used": false,
+      "account_api_used": false,
+      "paper_watch_review_only": true
+    }
+  },
+  "counts": {
+    "enriched_cases": 677,
+    "dashboard_cases": 677,
+    "pattern_cards": 83,
+    "representative_cases": 24,
+    "policy_compare": 4
+  },
+  "color_fields_added": [
+    "d1_color_name_ko..d5_color_name_ko",
+    "d1_color_hex..d5_color_hex",
+    "color_path_emoji",
+    "color_path_label_ko",
+    "pattern_short_label"
+  ],
+  "outputs": {
+    "enriched_cases": "C:\\Coding\\data\\closingbell\\research_index\\prev_close_color_dashboard_exports_20260516\\prev_close_color_cases_recent_1m_enriched_20260516.csv",
+    "dashboard_cases": "C:\\Coding\\data\\closingbell\\research_index\\prev_close_color_dashboard_exports_20260516\\prev_close_color_dashboard_cases_latest_20260516.csv",
+    "pattern_cards": "C:\\Coding\\data\\closingbell\\research_index\\prev_close_color_dashboard_exports_20260516\\prev_close_color_dashboard_pattern_cards_latest_20260516.csv",
+    "representative_cases": "C:\\Coding\\data\\closingbell\\research_index\\prev_close_color_dashboard_exports_20260516\\prev_close_color_dashboard_representative_cases_latest_20260516.csv",
+    "policy_compare": "C:\\Coding\\data\\closingbell\\research_index\\prev_close_color_dashboard_exports_20260516\\prev_close_color_policy_compare_latest_20260516.csv",
+    "report": "C:\\Users\\PYJ\\Downloads\\PREV_CLOSE_COLOR_DASHBOARD_EXPORTS_REPORT_KR_20260516.md",
+    "zip": "C:\\Users\\PYJ\\Downloads\\PREV_CLOSE_COLOR_DASHBOARD_EXPORTS_20260516.zip",
+    "online_latest": "C:\\Coding\\projects\\bell-dashboard\\data\\closingbell\\online_v2\\latest",
+    "online_by_date": "C:\\Coding\\projects\\bell-dashboard\\data\\closingbell\\online_v2\\by_date\\20260516"
+  },
+  "guards": {
+    "operational_v2_scoring_changed": false,
+    "d0_filter_changed": false,
+    "webhook_send_logic_changed": false,
+    "order_api_used": false,
+    "account_api_used": false,
+    "review_visualization_only": true
+  }
+}
