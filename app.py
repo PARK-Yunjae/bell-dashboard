@@ -360,6 +360,140 @@ st.markdown(
   .cb-progress-neg { background: linear-gradient(90deg,#c53030,#ff8a8a); }
   .cb-section-title { font-size: 0.95rem; color:#cbd5e0; margin: 14px 0 6px; font-weight:600; }
   .cb-toggle-note { color:#9aa4b2; font-size:0.8rem; margin-left:8px; }
+
+  /* === Light 모드 가독성 강화 (2026-05-16) === */
+  /* config.toml base=light 환경에서 회색 텍스트가 너무 연해서 읽기 어려운 문제 해결.
+     본문 텍스트는 #111827, 보조 텍스트는 #4b5563~#6b7280 수준으로 강제. */
+  .stApp[data-theme="light"] .cb-key,
+  .stApp[data-theme="light"] .cb-mini-key,
+  .stApp[data-theme="light"] .cb-subtle,
+  .stApp[data-theme="light"] .cb-toggle-note { color: #4b5563 !important; }
+  .stApp[data-theme="light"] .cb-val,
+  .stApp[data-theme="light"] .cb-period { color: #111827 !important; }
+  .stApp[data-theme="light"] .cb-section-title,
+  .stApp[data-theme="light"] .cb-info-card h4 { color: #1f2937 !important; }
+  .stApp[data-theme="light"] .cb-info-card,
+  .stApp[data-theme="light"] .cb-mini-row {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+  }
+  .stApp[data-theme="light"] .cb-note { background: rgba(37,99,235,0.06) !important; }
+  /* media query fallback — data-theme attribute가 없는 경우 대비 */
+  @media (prefers-color-scheme: light) {
+    .cb-key, .cb-mini-key, .cb-subtle, .cb-toggle-note { color: #4b5563; }
+    .cb-val, .cb-period { color: #111827; }
+    .cb-section-title, .cb-info-card h4 { color: #1f2937; }
+  }
+
+  /* === 글 겹침 / 표 정렬 / 가독성 보강 (2026-05-17) === */
+  /* 카드 패딩·줄간격·세로 정렬 통일 */
+  .cb-info-card {
+    padding: 14px 16px !important;
+    min-height: 96px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    line-height: 1.5;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  .cb-info-card .cb-key { line-height: 1.45; margin-bottom: 4px; }
+  .cb-info-card > div { white-space: normal !important; }
+
+  /* 카드 사이 여백 보강 (Streamlit columns 의 좁은 gap 보정) */
+  div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+    padding-right: 6px; padding-left: 6px;
+  }
+
+  /* 테이블·DataFrame 한글 헤더 잘림 방지, 컬럼 폭 균형 */
+  div[data-testid="stDataFrame"] table { table-layout: auto !important; }
+  div[data-testid="stDataFrame"] th,
+  div[data-testid="stDataFrame"] td {
+    white-space: normal !important;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    line-height: 1.45 !important;
+    padding: 6px 8px !important;
+  }
+  div[data-testid="stDataFrame"] th {
+    font-weight: 700 !important;
+    background: #f8fafc !important;
+  }
+
+  /* 신호등 이모지 칼럼 깨짐/짤림 방지 */
+  div[data-testid="stDataFrame"] td:has(span.emoji),
+  div[data-testid="stDataFrame"] td {
+    font-variant-emoji: emoji;
+  }
+
+  /* sub_tabs 헤더가 줄바꿈으로 한 줄 차지 방지 + 글씨 키움 */
+  div[data-baseweb="tab-list"] {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  div[data-baseweb="tab-list"] button {
+    white-space: nowrap !important;
+    min-height: 42px !important;
+    padding: 8px 14px !important;
+  }
+  div[data-baseweb="tab-list"] button p,
+  div[data-baseweb="tab-list"] button div {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+  }
+
+  /* DART 재무 카드 글씨 진하게 */
+  .stApp[data-theme="light"] .cb-info-card { color: #111827; }
+  .stApp[data-theme="light"] .cb-info-card .cb-row span,
+  .stApp[data-theme="light"] .cb-info-card .cb-row div { color: #111827 !important; }
+  .stApp[data-theme="light"] .cb-info-card .cb-key { color: #4b5563 !important; }
+  .stApp[data-theme="light"] .cb-val,
+  .stApp[data-theme="light"] .cb-val-pos,
+  .stApp[data-theme="light"] .cb-val-neg,
+  .stApp[data-theme="light"] .cb-val-warn { font-weight: 700 !important; }
+
+  /* Plotly 차트 — Streamlit 컨테이너 안에서 가로 100% 채우기 강제 */
+  .js-plotly-plot, .plotly, .plot-container {
+    width: 100% !important;
+  }
+
+  /* expander 라벨 본문 진하게 */
+  .stApp[data-theme="light"] summary p { color: #111827 !important; font-weight: 600; }
+
+  /* warning/info/error 박스 본문 가독성 */
+  .stApp[data-theme="light"] div[data-testid="stAlert"] p {
+    color: #111827 !important; line-height: 1.55;
+  }
+
+  /* metric 값 잘림 방지 */
+  div[data-testid="stMetricValue"] > div { font-variant-numeric: tabular-nums; }
+
+  /* selectbox/text_input — 라이트 모드에서 흐릿한 placeholder 보강 */
+  .stApp[data-theme="light"] input::placeholder,
+  .stApp[data-theme="light"] textarea::placeholder { color: #94a3b8 !important; }
+
+  /* === 반응형 / 모바일 보강 (2026-05-18) === */
+  /* Streamlit columns 가 좁은 화면(<768px)에서 세로 stack 으로 변환됨.
+     카드/표/차트가 잘리지 않게 padding/scroll 보강. */
+  @media (max-width: 900px) {
+    .block-container { padding-left: 0.8rem !important; padding-right: 0.8rem !important; max-width: 100% !important; }
+    .cb-info-card { min-height: auto !important; padding: 12px 14px !important; }
+    h1 { font-size: 1.75rem !important; }
+    h2 { font-size: 1.35rem !important; }
+    h3 { font-size: 1.15rem !important; }
+    div[data-baseweb="tab-list"] button p,
+    div[data-baseweb="tab-list"] button div { font-size: 13px !important; }
+    .js-plotly-plot { min-height: 380px !important; }
+  }
+
+  /* 표 가로 스크롤 (모바일에서 좁은 화면 보호) */
+  div[data-testid="stDataFrame"] {
+    overflow-x: auto !important;
+  }
+
+  /* metric 라벨 줄바꿈 깔끔하게 */
+  div[data-testid="stMetricLabel"] {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
 </style>
 """,
     unsafe_allow_html=True,
@@ -842,6 +976,73 @@ def load_finstate(corp_code: str) -> dict[str, Any]:
 
 
 @st.cache_data(show_spinner=False)
+def compute_signal_day_pct_change(
+    code: str, signal_date: str, entry_price: float | None = None
+) -> float | None:
+    """신호일 당일 등락률 = (15:00 진입가 또는 신호일 종가) ÷ 직전 거래일 종가 - 1.
+
+    Codex active dataset의 d0_pct_change는 D0 등장일(거래량 폭증일) 등락률이지
+    신호일(웹훅 발송일) 당일 등락률이 아니라 별도 계산이 필요.
+    """
+    if not code or not signal_date:
+        return None
+    daily = load_daily(code)
+    if daily.empty:
+        return None
+    try:
+        sig_dt = pd.to_datetime(signal_date).date()
+        d = daily.sort_values("date").copy()
+        d["_d"] = d["date"].dt.date
+        prev = d[d["_d"] < sig_dt]
+        if prev.empty:
+            return None
+        prev_close = float(prev.iloc[-1]["close"])
+        if prev_close <= 0:
+            return None
+        if entry_price is not None and float(entry_price) > 0:
+            num = float(entry_price)
+        else:
+            same = d[d["_d"] == sig_dt]
+            if same.empty:
+                return None
+            num = float(same.iloc[-1]["close"])
+            if num <= 0:
+                return None
+        return (num / prev_close - 1) * 100.0
+    except Exception:  # noqa: BLE001
+        return None
+
+
+@st.cache_data(show_spinner=False)
+def compute_rsi14(code: str, signal_date: str, period: int = 14) -> float | None:
+    """신호일 기준 일봉 close Wilder RSI(14). 표본 부족 시 None."""
+    if not code or not signal_date:
+        return None
+    daily = load_daily(code)
+    if daily.empty or len(daily) < period + 1:
+        return None
+    try:
+        sig_dt = pd.to_datetime(signal_date).date()
+        d = daily.sort_values("date").copy()
+        d["_d"] = d["date"].dt.date
+        upto = d[d["_d"] <= sig_dt]
+        if len(upto) < period + 1:
+            return None
+        closes = upto["close"].astype(float)
+        delta = closes.diff()
+        gain = delta.clip(lower=0)
+        loss = -delta.clip(upper=0)
+        avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
+        rs = avg_gain / avg_loss.replace(0, pd.NA)
+        rsi = 100 - 100 / (1 + rs)
+        last = rsi.iloc[-1]
+        return float(last) if pd.notna(last) else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+@st.cache_data(show_spinner=False)
 def load_minute(code: str) -> pd.DataFrame:
     path = MINUTE / f"{normalize_code(code)}.parquet"
     if not path.exists():
@@ -1032,9 +1233,12 @@ def reference_price(info: dict[str, Any]) -> tuple[float | None, str]:
     """차트 기준선을 그릴 가격과 사람이 볼 라벨을 함께 고른다."""
     for key, label in [
         ("signal_price_1500", "15:00 신호가"),
+        ("entry_price_1500", "15:00 진입가"),
+        ("entry_price_used", "진입가"),
         ("signal_price", "신호가"),
         ("current_price", "현재가 기준"),
         ("d0_price", "D0 기준가"),
+        ("d0_close", "D0 종가"),
     ]:
         value = numeric(info.get(key))
         if value and value > 0:
@@ -1319,6 +1523,16 @@ def build_minute_windows(code: str, signal_date: str) -> list[dict[str, Any]]:
             "scope": "five_day_review",
         }
     )
+    # 웹훅일+D+1~D+5 = D0~D+5 통합 흐름 (Codex 2026-05-18 권장 기본 보기)
+    windows.append(
+        {
+            "label": "웹훅일+D+1~D+5 전체",
+            "dates": [pd.Timestamp(signal)] + future_dates,
+            "start": time(9, 0),
+            "end": time(15, 30),
+            "scope": "six_day_review",
+        }
+    )
     return windows
 
 
@@ -1413,7 +1627,7 @@ def _apply_light_chart_layout(fig, *, height: int = 480, legend_y: float = 1.10,
         },
         hovermode="x unified",
     )
-    fig.update_xaxes(showgrid=True, gridcolor="#eef2f7", linecolor="#cbd5e1", tickfont={"size": 11})
+    fig.update_xaxes(showgrid=True, gridcolor="#eef2f7", linecolor="#cbd5e1", tickfont={"size": 11}, tickformat="%Y.%m.%d")
     fig.update_yaxes(showgrid=True, gridcolor="#eef2f7", linecolor="#cbd5e1", tickfont={"size": 11})
 
 
@@ -1459,6 +1673,17 @@ def plot_daily_chart(df: pd.DataFrame, info: dict[str, Any], target_dates: list[
         for idx, date_value in enumerate(target_dates, start=1):
             add_vertical_marker(fig, str(date_value.date()), f"D+{idx}", "#718096")
         _apply_light_chart_layout(fig, height=620, legend_y=1.06, top_margin=60)
+        # 가격축 auto-zoom — 0부터 시작 방지
+        try:
+            prices = pd.concat([view["high"], view["low"], view["close"]]).dropna()
+            prices = prices[prices > 0]
+            if not prices.empty:
+                y_lo = float(prices.min()) * 0.97
+                y_hi = float(prices.max()) * 1.03
+                if y_hi > y_lo:
+                    fig.update_yaxes(range=[y_lo, y_hi], row=1, col=1)
+        except Exception:  # noqa: BLE001
+            pass
         st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
     else:
         chart_cols = ["close"] + [f"ma{w}" for w in MA_WINDOWS]
@@ -1466,7 +1691,13 @@ def plot_daily_chart(df: pd.DataFrame, info: dict[str, Any], target_dates: list[
         st.bar_chart(view.set_index("date")["volume"])
 
 
-def plot_minute_chart(df: pd.DataFrame, info: dict[str, Any], key_prefix: str = "minute") -> None:
+def plot_minute_chart(
+    df: pd.DataFrame,
+    info: dict[str, Any],
+    key_prefix: str = "minute",
+    *,
+    show_window_selector: bool = True,
+) -> None:
     if df.empty:
         st.warning("로컬 data/market/minute_ohlcv에 이 종목 분봉 파일이 없습니다. 일봉 결과와 메모는 볼 수 있지만 분봉 복기는 데이터 갱신/수집 뒤에 가능합니다.")
         return
@@ -1474,22 +1705,90 @@ def plot_minute_chart(df: pd.DataFrame, info: dict[str, Any], key_prefix: str = 
     code = normalize_code(info.get("stock_code", ""))
     windows = build_minute_windows(code, str(signal_date))
     window_labels = [item["label"] for item in windows]
-    default_window = "D+1~D+5 전체" if any(item["scope"] == "five_day_review" and item.get("dates") for item in windows) else windows[0]["label"]
+    # 기본 보기: 웹훅일+D+1~D+5 전체 (D0~D+5 흐름) — Codex 2026-05-18 권장.
+    # fallback: D+1~D+5 전체 → 첫 옵션
+    default_window = next(
+        (lbl for lbl in ("웹훅일+D+1~D+5 전체", "D+1~D+5 전체") if lbl in window_labels),
+        window_labels[0],
+    )
     window_key = f"{key_prefix}_window"
     if window_key not in st.session_state or st.session_state[window_key] not in window_labels:
         st.session_state[window_key] = default_window
-    control_cols = st.columns([2.4, 1.6, 4.0])
-    with control_cols[0]:
-        window_label = st.selectbox("분봉 기간", window_labels, key=window_key)
-    with control_cols[1]:
-        interval_key = f"{key_prefix}_interval_30default"
-        if interval_key not in st.session_state:
-            st.session_state[interval_key] = "30분"
-        interval_label = st.radio("분봉 단위", ["5분", "15분", "30분"], index=2, horizontal=True, key=interval_key)
+    interval_key = f"{key_prefix}_interval_30default"
+    if interval_key not in st.session_state:
+        st.session_state[interval_key] = "30분"
+    rule_key = f"{key_prefix}_rule"
+    if rule_key not in st.session_state:
+        st.session_state[rule_key] = "기본"
+    if show_window_selector:
+        control_cols = st.columns([2.0, 1.4, 2.6])
+        with control_cols[0]:
+            window_label = st.selectbox("분봉 기간", window_labels, key=window_key)
+        with control_cols[1]:
+            interval_label = st.radio("분봉 단위", ["5분", "15분", "30분"], index=2, horizontal=True, key=interval_key)
+        with control_cols[2]:
+            rule_label = st.radio(
+                "자동감시 룰",
+                ["기본", "기대형", "보수형", "소익절형"],
+                horizontal=True, key=rule_key,
+                help="기본 = 계좌 ±1/±2/±3. 룰 선택 시 해당 룰의 목표·발동·보전·손절 라인만 강조 표시.",
+            )
+    else:
+        # 종목 상세: 기간 selectbox 숨김. 항상 웹훅일+D+1~D+5 전체로 고정 (사용자 2026-05-18 피드백)
+        st.session_state[window_key] = default_window
+        window_label = default_window
+        control_cols = st.columns([1.4, 2.6])
+        with control_cols[0]:
+            interval_label = st.radio("분봉 단위", ["5분", "15분", "30분"], index=2, horizontal=True, key=interval_key)
+        with control_cols[1]:
+            rule_label = st.radio(
+                "자동감시 룰",
+                ["기본", "기대형", "보수형", "소익절형"],
+                horizontal=True, key=rule_key,
+                help="기본 = 계좌 ±1/±2/±3. 룰 선택 시 해당 룰의 목표·발동·보전·손절 라인만 강조 표시.",
+            )
     minutes = {"5분": 5, "15분": 15, "30분": 30}[interval_label]
     window = next(item for item in windows if item["label"] == window_label)
     if window["scope"] == "five_day_review" and minutes == 5:
         st.caption("D+1~D+5 전체는 5분봉도 가능하지만 길어질 수 있습니다. 흐름만 빠르게 볼 때는 15분/30분봉이 더 편합니다.")
+    # D0/D+1~D+5 거래일 매핑 — 차트의 D+N 캔들이 어떤 날짜인지 한 줄로 표시
+    # 분봉 결손/미래/오늘 표시도 함께 — "어떤 D+N 슬롯이 비어 있는지" 즉시 보이게.
+    if window["scope"] in ("six_day_review", "five_day_review") and show_window_selector is False:
+        try:
+            _weekday_kr = ["월", "화", "수", "목", "금", "토", "일"]
+            _today = pd.Timestamp.today().normalize()
+            _d0_ts = pd.Timestamp(signal_date)
+            # 종목 분봉 parquet에 실제로 존재하는 거래일 set (분봉 결손 판별)
+            _present_days: set = set()
+            try:
+                _present_days = {d.date() for d in pd.to_datetime(df["dt"]).dt.normalize().unique()}
+            except Exception:  # noqa: BLE001
+                _present_days = set()
+            _missing_slots: list[str] = []
+            def _date_tag(ts: pd.Timestamp, label: str) -> str:
+                wd = _weekday_kr[ts.weekday()]
+                if ts.normalize() > _today:
+                    tail = " · 미래"
+                elif ts.normalize() == _today:
+                    tail = " · 오늘"
+                elif _present_days and ts.date() not in _present_days:
+                    tail = " · ⚠️결손"
+                    _missing_slots.append(f"{label}({ts.strftime('%m-%d')})")
+                else:
+                    tail = ""
+                return f"**{label}** {ts.strftime('%m-%d')}({wd}){tail}"
+            parts = [_date_tag(_d0_ts, "D0")]
+            for _idx, _dt in enumerate(trading_days_after(code, str(signal_date), 5), start=1):
+                parts.append(_date_tag(pd.Timestamp(_dt), f"D+{_idx}"))
+            st.caption("📅 거래일 매핑: " + " · ".join(parts))
+            if _missing_slots:
+                st.warning(
+                    f"⚠️ 분봉 결손 슬롯: {' · '.join(_missing_slots)} — "
+                    "해당 거래일은 종목 분봉 parquet에 없습니다 (수집 실패 / 거래정지 / 시장조치 가능성). "
+                    "다른 거래일 분봉은 그대로 표시되며, 차트의 x축에서는 결손일 자동 압축됩니다."
+                )
+        except Exception:  # noqa: BLE001
+            pass
     view = minute_window_data(df, window, minutes)
     signal_price, signal_label = reference_price(info)
     if view.empty:
@@ -1498,6 +1797,30 @@ def plot_minute_chart(df: pd.DataFrame, info: dict[str, Any], key_prefix: str = 
         else:
             st.info(f"{window_label} 구간의 분봉 데이터가 없습니다. 휴장일, 미래 추적일, 또는 parquet 미보유 상태일 수 있습니다.")
         return
+
+    if not show_window_selector and window["scope"] in ("six_day_review", "five_day_review"):
+        try:
+            future_dates_for_labels = trading_days_after(code, str(signal_date), 5)
+            loaded_parts = []
+            for expected_date in window.get("dates", []):
+                day = pd.to_datetime(expected_date).date()
+                raw_day = df[df["dt"].dt.date.eq(day)]
+                future_idx = next(
+                    (idx for idx, fd in enumerate(future_dates_for_labels, start=1) if fd.date() == day),
+                    None,
+                )
+                day_label = "D0" if day == signal_date else f"D+{future_idx or '?'}"
+                if raw_day.empty:
+                    loaded_parts.append(f"{day_label} {pd.Timestamp(day).strftime('%m.%d')} 없음")
+                    continue
+                loaded_parts.append(
+                    f"{day_label} {pd.Timestamp(day).strftime('%m.%d')} "
+                    f"{len(raw_day):,}행({raw_day['dt'].min().strftime('%H:%M')}~{raw_day['dt'].max().strftime('%H:%M')})"
+                )
+            if loaded_parts:
+                st.caption("분봉 로드 현황: " + " · ".join(loaded_parts))
+        except Exception:  # noqa: BLE001
+            pass
 
     if go and make_subplots:
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.72, 0.28], vertical_spacing=0.04)
@@ -1513,18 +1836,126 @@ def plot_minute_chart(df: pd.DataFrame, info: dict[str, Any], key_prefix: str = 
             row=1,
             col=1,
         )
-        fig.add_trace(go.Scatter(x=view["dt"], y=view["vwap"], mode="lines", name="VWAP", line={"width": 2}), row=1, col=1)
+        # VWAP 표시 옵션 (사용자 토글, 기본 OFF — 분봉 차트가 복잡해지는 것 방지)
+        show_vwap_key = f"{key_prefix}_show_vwap"
+        if show_vwap_key not in st.session_state:
+            st.session_state[show_vwap_key] = False
+        show_vwap = st.session_state.get(show_vwap_key, False)
+        if show_vwap and "vwap" in view.columns:
+            fig.add_trace(go.Scatter(x=view["dt"], y=view["vwap"], mode="lines", name="VWAP", line={"width": 2}), row=1, col=1)
         fig.add_trace(go.Bar(x=view["dt"], y=view["volume"], name="거래량", marker_color="#8a8f98"), row=2, col=1)
         if signal_price:
-            for pct, label, color in [(0, signal_label, "#111827"), (0.01, "+1%", "#2f855a"), (0.02, "+2%", "#2b6cb0"), (0.03, "+3%", "#6b46c1"), (-0.02, "-2%", "#c53030")]:
-                fig.add_hline(y=signal_price * (1 + pct), line_dash="dot", line_color=color, annotation_text=label, row=1, col=1)
+            # 계좌 체감 기준 라인 — 매수 직후 슬리피지 약 -0.3% 보정.
+            # raw 변환: 계좌 +N% → 진입가 * (1 + (N+0.3)/100), 계좌 -N% → 진입가 * (1 - (N-0.3)/100)
+            #   즉 계좌 +1 → raw +1.3, 계좌 -1 → raw -0.7
+            base_lines = [
+                (0.000, signal_label, "#111827", "dot"),
+                (+0.013, "+1%", "#16a34a", "dot"),
+                (+0.023, "+2%", "#16a34a", "dot"),
+                (+0.033, "+3%", "#15803d", "dot"),
+                (-0.007, "-1%", "#dc2626", "dot"),
+                (-0.017, "-2%", "#dc2626", "dot"),
+                (-0.027, "-3%", "#991b1b", "dot"),
+            ]
+            # 자동감시 룰 별 라인 (목표/발동/보전/손절). 굵은 dash로 강조.
+            rule_lines_by_name: dict[str, list] = {
+                "기본": [],
+                "기대형": [
+                    (+0.043, "목표 +4", "#15803d", "dash"),
+                    (+0.023, "보전 +2", "#16a34a", "dash"),
+                    (-0.027, "손절 -3", "#991b1b", "dash"),
+                ],
+                "보수형": [
+                    (+0.033, "목표 +3", "#15803d", "dash"),
+                    (+0.013, "발동 +1", "#22c55e", "dash"),
+                    (+0.008, "보전 +0.5", "#84cc16", "dash"),
+                    (-0.027, "손절 -3", "#991b1b", "dash"),
+                ],
+                "소익절형": [
+                    (+0.023, "목표 +2", "#15803d", "dash"),
+                    (+0.013, "발동 +1", "#22c55e", "dash"),
+                    (+0.008, "보전 +0.5", "#84cc16", "dash"),
+                    (-0.027, "손절 -3", "#991b1b", "dash"),
+                ],
+            }
+            rule_lines = rule_lines_by_name.get(rule_label, [])
+            # 룰 선택 시: 기본 ±1/±2/±3은 흐릿하게 보이도록 색 옅게, 룰 라인은 굵은 dash로 강조.
+            if rule_lines:
+                base_lines = [(p, l, "#cbd5e0", "dot") if l != signal_label else (p, l, "#111827", "dot") for p, l, _, _ in base_lines]
+            for raw_pct, label, color, dash in base_lines + rule_lines:
+                width = 2.2 if dash == "dash" else 1
+                fig.add_hline(
+                    y=signal_price * (1 + raw_pct),
+                    line_dash=dash,
+                    line_color=color,
+                    line_width=width,
+                    annotation_text=label,
+                    annotation_position="right",
+                    row=1, col=1,
+                )
         if window["scope"] == "intraday":
             add_vertical_marker(fig, pd.Timestamp.combine(signal_date, time(15, 0)).isoformat(), "15:00", "#2b6cb0")
+        # D0 마커 — 웹훅일+D+1~D+5 모드일 때만 (D0 캔들 위치 시각화)
+        if window["scope"] == "six_day_review":
+            add_vertical_marker(
+                fig, pd.Timestamp.combine(signal_date, time(9, 0)).isoformat(),
+                "D0", "#f97316",
+            )
         for idx, date_value in enumerate(trading_days_after(code, str(signal_date), 5), start=1):
             if date_value.date() in {pd.to_datetime(value).date() for value in window.get("dates", [])}:
                 add_vertical_marker(fig, pd.Timestamp.combine(date_value.date(), time(9, 0)).isoformat(), f"D+{idx}", "#718096")
         _apply_light_chart_layout(fig, height=560, legend_y=1.08, top_margin=60)
+        # 가격축 auto-zoom
+        try:
+            prices = pd.concat([view["high"], view["low"], view["close"]]).dropna()
+            prices = prices[prices > 0]
+            if not prices.empty:
+                y_lo = float(prices.min()) * 0.97
+                y_hi = float(prices.max()) * 1.03
+                if y_hi > y_lo:
+                    fig.update_yaxes(range=[y_lo, y_hi], row=1, col=1)
+        except Exception:  # noqa: BLE001
+            pass
+        # 분봉 휴장일/주말/장 외 시간 압축 — 결손 일자도 자동 감지해서 압축
+        rangebreaks = [
+            dict(bounds=["sat", "mon"]),
+            dict(bounds=[15.5, 9], pattern="hour"),
+        ]
+        try:
+            present_days = sorted({d.date() for d in pd.to_datetime(view["dt"]).dt.normalize().unique()})
+            if len(present_days) >= 2:
+                from datetime import timedelta as _td
+                cur = present_days[0]
+                missing: list[str] = []
+                while cur <= present_days[-1]:
+                    if cur.weekday() < 5 and cur not in present_days:
+                        missing.append(cur.strftime("%Y-%m-%d"))
+                    cur = cur + _td(days=1)
+                if missing:
+                    rangebreaks.append(dict(values=missing))
+        except Exception:  # noqa: BLE001
+            pass
+        fig.update_xaxes(rangebreaks=rangebreaks, row=1, col=1)
+        fig.update_xaxes(rangebreaks=rangebreaks, row=2, col=1)
+        # 한국식 날짜 표기 (분봉: 월/일 시:분, 슬래시로 시간 구분과 명확히 분리)
+        fig.update_xaxes(tickformat="%m/%d %H:%M", row=2, col=1)
         st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
+        # 계좌/raw 라인 표시 정책 안내 (Codex 2026-05-18 압축파일 시뮬 결과 반영)
+        ref_text = (
+            f"**기준가**: {signal_price:,.0f}원 ({signal_label} · 신호일 15시 진입가)"
+            if signal_price else "**기준가**: — (entry_price 미감지)"
+        )
+        st.caption(
+            f"{ref_text} · 라인은 **계좌 체감 기준** ±1/±2/±3%. "
+            "매수 직후 슬리피지 약 -0.3%를 반영해 내부 raw +1.3/+2.3/+3.3, -0.7/-1.7/-2.7로 계산합니다."
+        )
+        # VWAP 토글 (차트 아래 작은 옵션)
+        st.checkbox(
+            "VWAP 라인 표시",
+            value=show_vwap,
+            key=show_vwap_key,
+            help="장중 누적 거래량 가중 평균가. 체크하면 차트에 주황선이 그려집니다.",
+        )
     else:
         st.line_chart(view.set_index("dt")[["close", "vwap"]])
         st.bar_chart(view.set_index("dt")["volume"])
@@ -1566,8 +1997,8 @@ def plot_one_year_minute_chart(
     if window_key not in st.session_state or st.session_state[window_key] not in window_labels:
         st.session_state[window_key] = window_labels[0]
 
-    # 차트 상단 컨트롤: 분봉 단위 + 기간 토글
-    control_cols = st.columns([1.8, 5.2])
+    # 차트 상단 컨트롤: 분봉 단위 + 기간 토글 + 자동감시 룰 토글
+    control_cols = st.columns([1.4, 3.4, 2.6])
     with control_cols[0]:
         interval_key = f"{key_prefix}_interval_30default"
         if interval_key not in st.session_state:
@@ -1575,6 +2006,16 @@ def plot_one_year_minute_chart(
         interval_label = st.radio("분봉", ["5분", "15분", "30분"], index=2, horizontal=True, key=interval_key, label_visibility="collapsed")
     with control_cols[1]:
         window_label = st.radio("기간", window_labels, horizontal=True, key=window_key, label_visibility="collapsed")
+    with control_cols[2]:
+        rule_key = f"{key_prefix}_rule"
+        if rule_key not in st.session_state:
+            st.session_state[rule_key] = "기본"
+        rule_label = st.radio(
+            "자동감시 룰",
+            ["기본", "기대형", "보수형", "소익절형"],
+            horizontal=True, key=rule_key, label_visibility="collapsed",
+            help="기본 = 계좌 ±1/±2/±3. 룰 선택 시 해당 룰의 목표·발동·보전·손절 라인 강조.",
+        )
     minutes = {"5분": 5, "15분": 15, "30분": 30}[interval_label]
     window = next(item for item in windows if item["label"] == window_label)
 
@@ -1695,16 +2136,54 @@ def plot_one_year_minute_chart(
         col=1,
     )
 
-    # +1/+2/+3/-2% 수평선
+    # 계좌 체감 기준 ±1/±2/±3 수평선 — 매수 직후 슬리피지 약 -0.3% 보정.
+    # raw +1.3/+2.3/+3.3/-0.7/-1.7/-2.7로 계산해서 화면엔 계좌 라벨 표시.
     if signal_price:
-        for pct, label, color in [
-            (0.0, signal_label, "#cbd5e0"),
-            (0.01, "+1%", "#9ae6b4"),
-            (0.02, "+2%", "#68d391"),
-            (0.03, "+3%", "#38a169"),
-            (-0.02, "-2%", "#fc8181"),
-        ]:
-            fig.add_hline(y=signal_price * (1 + pct), line_dash="dot", line_color=color, line_width=1, annotation_text=label, annotation_font_size=10, annotation_font_color=color, annotation_position="right", row=1, col=1)
+        base_lines = [
+            (0.000, signal_label, "#111827", "dot"),
+            (+0.013, "+1%", "#16a34a", "dot"),
+            (+0.023, "+2%", "#16a34a", "dot"),
+            (+0.033, "+3%", "#15803d", "dot"),
+            (-0.007, "-1%", "#dc2626", "dot"),
+            (-0.017, "-2%", "#dc2626", "dot"),
+            (-0.027, "-3%", "#991b1b", "dot"),
+        ]
+        rule_lines_by_name: dict[str, list] = {
+            "기본": [],
+            "기대형": [
+                (+0.043, "목표 +4", "#15803d", "dash"),
+                (+0.023, "보전 +2", "#16a34a", "dash"),
+                (-0.027, "손절 -3", "#991b1b", "dash"),
+            ],
+            "보수형": [
+                (+0.033, "목표 +3", "#15803d", "dash"),
+                (+0.013, "발동 +1", "#22c55e", "dash"),
+                (+0.008, "보전 +0.5", "#84cc16", "dash"),
+                (-0.027, "손절 -3", "#991b1b", "dash"),
+            ],
+            "소익절형": [
+                (+0.023, "목표 +2", "#15803d", "dash"),
+                (+0.013, "발동 +1", "#22c55e", "dash"),
+                (+0.008, "보전 +0.5", "#84cc16", "dash"),
+                (-0.027, "손절 -3", "#991b1b", "dash"),
+            ],
+        }
+        rule_lines = rule_lines_by_name.get(rule_label, [])
+        if rule_lines:
+            base_lines = [(p, l, "#cbd5e0", "dot") if l != signal_label else (p, l, "#111827", "dot") for p, l, _, _ in base_lines]
+        for raw_pct, label, color, dash in base_lines + rule_lines:
+            width = 2.2 if dash == "dash" else 1
+            fig.add_hline(
+                y=signal_price * (1 + raw_pct),
+                line_dash=dash,
+                line_color=color,
+                line_width=width,
+                annotation_text=label,
+                annotation_font_size=10,
+                annotation_font_color=color,
+                annotation_position="right",
+                row=1, col=1,
+            )
 
     # D+1~D+3 감시 구간 음영 (회복 트리거 핵심 관찰 구간 — 매수 신호 아님)
     window_dates_set = {pd.to_datetime(value).date() for value in window.get("dates", [])}
@@ -1823,7 +2302,29 @@ def plot_one_year_minute_chart(
     else:
         fig.update_xaxes(range=[plot_view["dt"].min(), plot_view["dt"].max()], row=1, col=1)
         fig.update_xaxes(range=[plot_view["dt"].min(), plot_view["dt"].max()], row=2, col=1)
-    st.plotly_chart(fig, use_container_width=True)
+
+    # 가격축 y range — 0부터가 아니라 기간 저가~고가의 ±3% 패딩으로 자동 줌
+    try:
+        prices = pd.concat([plot_view.get("high"), plot_view.get("low"), plot_view.get("close")]).dropna()
+        prices = prices[prices > 0]
+        if not prices.empty:
+            y_lo = float(prices.min()) * 0.97
+            y_hi = float(prices.max()) * 1.03
+            if y_hi > y_lo:
+                fig.update_yaxes(range=[y_lo, y_hi], row=1, col=1)
+    except Exception:  # noqa: BLE001
+        pass
+
+    st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
+    # 기준가 + 라인 표시 정책 안내
+    ref_text = (
+        f"**기준가**: {signal_price:,.0f}원 ({signal_label} · 신호일 15시 진입가)"
+        if signal_price else "**기준가**: — (entry_price 미감지)"
+    )
+    st.caption(
+        f"{ref_text} · 라인은 **계좌 체감 기준** ±1/±2/±3%. "
+        "매수 직후 슬리피지 약 -0.3%를 반영해 내부 raw +1.3/+2.3/+3.3, -0.7/-1.7/-2.7로 계산합니다."
+    )
 
 
 # Shadow / 연구용 감시 데이터 (Codex paper_watch 산출)
@@ -3123,8 +3624,19 @@ def render_daily_chart_with_ma(code: str, signal_date: str) -> None:
         yanchor="bottom", font={"size": 11, "color": "#ffd166"},
     )
     _apply_light_chart_layout(fig, height=480, legend_y=1.08, top_margin=60)
-    fig.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])], row=1, col=1)
-    fig.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])], row=2, col=1)
+    fig.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])], row=1, col=1, tickformat="%Y.%m.%d")
+    fig.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])], row=2, col=1, tickformat="%Y.%m.%d")
+    # 가격축 auto-zoom
+    try:
+        prices = pd.concat([view["high"], view["low"], view["close"]]).dropna()
+        prices = prices[prices > 0]
+        if not prices.empty:
+            y_lo = float(prices.min()) * 0.97
+            y_hi = float(prices.max()) * 1.03
+            if y_hi > y_lo:
+                fig.update_yaxes(range=[y_lo, y_hi], row=1, col=1)
+    except Exception:  # noqa: BLE001
+        pass
     st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
 
 
@@ -3168,10 +3680,15 @@ def render_investor_flow_table(code: str, signal_date: str, lookback_days: int =
     if "orgn_daly_nettrde_qty" in merged.columns:
         out["기관 순매수(주)"] = merged["orgn_daly_nettrde_qty"].apply(lambda v: f"{int(v):+,}" if pd.notna(v) else "—")
     if "prm_netprps_amt" in merged.columns:
-        out["프로그램 순매수"] = merged["prm_netprps_amt"].apply(lambda v: _format_money_short(v) if pd.notna(v) else "—")
+        out["프로그램 순매수 (참고)"] = merged["prm_netprps_amt"].apply(lambda v: _format_money_short(v) if pd.notna(v) else "—")
     if "trde_qty" in merged.columns:
         out["거래량"] = merged["trde_qty"].apply(lambda v: f"{int(v):,}" if pd.notna(v) else "—")
 
+    # 표시 정책 안내 (Codex supply audit 2026-05-18 기준)
+    st.caption(
+        "표시 정책: **0** = 실제 0 (원천 행 존재) / **—** = 원천 행 없음·미제공 / "
+        "프로그램 컬럼은 과거 커버리지가 낮아 BellGuard 점수·웹훅 필수 조건에 사용되지 않습니다 (참고용)."
+    )
     st.dataframe(out.reset_index(drop=True), use_container_width=True, hide_index=True, height=420)
 
 
@@ -3215,8 +3732,84 @@ def render_investor_flow_chart(code: str, signal_date: str, lookback_days: int =
     st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
 
 
-def render_financials_card(stock_code: str) -> None:
-    """DART CIS 기준 매출/영업이익/순이익 패널 (가장 최근 연도, 연결 우선)."""
+WARN_KEYWORDS_FINANCIALS = (
+    "유상증자", "전환사채", "감자", "거래정지", "관리종목",
+    "상장폐지", "불성실공시", "소송", "횡령", "배임", "감사의견",
+)
+
+
+@st.cache_data(show_spinner=False)
+def load_recent_disclosure_30d() -> pd.DataFrame:
+    """dart/recent_30d.parquet 로드 (전체 종목 최근 30일 공시 인덱스)."""
+    p = DART_DIR / "recent_30d.parquet"
+    if not p.exists():
+        return pd.DataFrame()
+    try:
+        df = pd.read_parquet(p)
+        if "stock_code" in df.columns:
+            df["stock_code"] = df["stock_code"].astype(str).str.zfill(6)
+        return df
+    except Exception:  # noqa: BLE001
+        return pd.DataFrame()
+
+
+def render_financials_card(stock_code: str, name: str = "", market: str = "") -> None:
+    """기업 개요 + DART 재무 + 최근 공시 + 위험 키워드 매칭.
+
+    Codex Claude handoff (2026-05-18) 권장:
+    - 기업 개요(회사명/코드/시장)
+    - 최근 DART 공시 5건 + 위험 키워드(유상증자/전환사채/관리종목/상장폐지/...) 배지
+    - 기존 매출/영업이익/당기순이익 재무
+
+    PER/PBR/ROE는 현재 수집 데이터에 없어 "미수집"으로 표시.
+    """
+    code6 = normalize_code(stock_code)
+
+    # ── 1) 기업 개요 카드
+    parts = ['<div class="cb-info-card"><h4>기업 개요</h4>']
+    if name:
+        parts.append(f'<div class="cb-row"><span class="cb-key">회사명</span><span class="cb-val">{name}</span></div>')
+    parts.append(f'<div class="cb-row"><span class="cb-key">종목코드</span><span class="cb-val">{code6}</span></div>')
+    if market:
+        parts.append(f'<div class="cb-row"><span class="cb-key">시장</span><span class="cb-val">{market}</span></div>')
+    parts.append(
+        '<div class="cb-key" style="font-size:0.78rem; margin-top:6px;">'
+        'PER/PBR/ROE/시가총액은 현재 수집 데이터에 없어 미표시 — 추후 보강 예정'
+        '</div></div>'
+    )
+    st.markdown("".join(parts), unsafe_allow_html=True)
+
+    # ── 2) 최근 DART 공시 (30일) + 위험 키워드 배지
+    disc = load_recent_disclosure_30d()
+    parts = ['<div class="cb-info-card"><h4>최근 DART 공시 (30일)</h4>']
+    rows = pd.DataFrame()
+    if not disc.empty and "stock_code" in disc.columns:
+        rows = disc[disc["stock_code"] == code6].sort_values("rcept_dt", ascending=False).head(5)
+    if rows.empty:
+        parts.append('<div class="cb-key">최근 30일간 공시 없음 (또는 DART 데이터 미수집)</div>')
+    else:
+        for _, dr in rows.iterrows():
+            rcept = str(dr.get("rcept_dt", ""))
+            rcept_fmt = f"{rcept[:4]}-{rcept[4:6]}-{rcept[6:8]}" if len(rcept) >= 8 else rcept
+            title = str(dr.get("report_nm", "")).strip()
+            warn_hits = [k for k in WARN_KEYWORDS_FINANCIALS if k in title]
+            badge = (
+                f' <span style="color:#dc2626; font-weight:600;">⚠️ {", ".join(warn_hits)}</span>'
+                if warn_hits else ""
+            )
+            parts.append(
+                f'<div class="cb-row"><span class="cb-key">{rcept_fmt}</span>'
+                f'<span class="cb-val" style="font-size:0.9rem;">{title}{badge}</span></div>'
+            )
+        parts.append(
+            f'<div class="cb-key" style="font-size:0.78rem; margin-top:6px;">'
+            f'위험 키워드: {" / ".join(WARN_KEYWORDS_FINANCIALS)}'
+            '</div>'
+        )
+    parts.append('</div>')
+    st.markdown("".join(parts), unsafe_allow_html=True)
+
+    # ── 3) DART 재무 (기존 finstate_ts 기반)
     parts = ['<div class="cb-info-card"><h4>최근 재무 (DART)</h4>']
     corp = find_corp_code(stock_code)
     if not corp:
@@ -4418,11 +5011,11 @@ def render_online_v2_dashboard() -> None:
 
     if not manifest and top3.empty:
         st.warning(
-            f"⚠️ 온라인 V2 스냅샷이 없습니다.\n\n"
+            "⚠️ 온라인 V2 스냅샷이 없습니다.\n\n"
             f"경로: `{ONLINE_V2_DIR}`\n\n"
             "**해결 방법**: `bell-data` 프로젝트에서 다음 명령으로 스냅샷을 만드세요.\n"
             "```powershell\n"
-            "$py='C:\\Coding\\projects\\_venvs\\closingbell-py312\\Scripts\\python.exe'\n"
+            "$py = 'C:/Coding/projects/_venvs/closingbell-py312/Scripts/python.exe'\n"
             "& $py -m bell_data.cli export-online-v2-dashboard --date 2026-05-14\n"
             "```"
         )
@@ -6071,20 +6664,19 @@ def render_whole_market_pattern_lab() -> None:
 # 4탭 슬림 골격 (2026-05-16 reorg)
 #   오늘 / 복기 / 연구실 / 메모
 #
-# 운영 본진: V2 (현행 웹훅)
-# 복기/연구 본진: V2 vs HYBRID 비교
-# HYBRID: shadow 후보 (운영 전환 아님)
+# 메인 표시: BellGuard 안정후보
+# V2: 삭제하지 않고 기록/비교용으로 보존
+# 현재일 후보에는 D+1~D+5 결과를 노출하지 않는다.
 #
 # 기존 12탭의 모든 render 함수는 그대로 재사용한다.
-# 운영 코드(V2 산식, D0 필터, 웹훅, 스케줄러, 주문)는 변경하지 않는다.
+# 주문/계좌/yj_bot/실제 웹훅 발송 가드는 변경하지 않는다.
 # ============================================================
 
 
 def _resolve_hybrid_data_path(name: str) -> Path | None:
-    """V2 vs HYBRID 비교 데이터 위치 우선순위 검색.
+    """BellGuard / V2 record 데이터 위치 우선순위 검색.
     1) bell-dashboard repo data/online_v2/latest/
-    2) BELL_DATA_ROOT online_v2/latest/
-    3) C:/Users/PYJ/Downloads/  (Codex 직출 위치)
+    2) C:/Users/PYJ/Downloads/  (Codex 직출 위치)
     """
     candidates = [
         ONLINE_V2_DIR / name,
@@ -6099,33 +6691,615 @@ def _resolve_hybrid_data_path(name: str) -> Path | None:
     return None
 
 
+def _resolve_main_dataset() -> tuple[Path, str, str]:
+    """메인 BellGuard 데이터셋 자동 선택.
+
+    우선순위:
+        1. bellguard_d0_strict_1y (active D0 3일 풀 + D0 필터 + 신호일 BellGuard)
+        2. bellguard_pricecap_1y (D0 Strict + 가격필터)
+        3. bellguard_1y (legacy Mixed, COLOR_EDGE 섞임 - 수치 신뢰 X)
+
+    Returns:
+        (dataset_dir, file_prefix, display_label)
+    """
+    strict = ONLINE_V2_DIR / "bellguard_d0_strict_1y"
+    if strict.exists() and (strict / "bellguard_d0_strict_top3_latest.csv").exists():
+        return strict, "bellguard_d0_strict", "벨가드 안정후보 (D0 3일 풀 + 신호일 점수)"
+    pc = ONLINE_V2_DIR / "bellguard_pricecap_1y"
+    if pc.exists() and (pc / "bellguard_pricecap_top3_latest.csv").exists():
+        return pc, "bellguard_pricecap", "벨가드 안정후보 (D0 Strict + 가격필터 100k)"
+    bg = ONLINE_V2_DIR / "bellguard_1y"
+    if bg.exists():
+        return bg, "bellguard", "벨가드 안정후보 (legacy - 수치 검증 중)"
+    return ONLINE_V2_DIR, "bellguard", "데이터 없음"
+
+
+def _load_main_manifest_kpi() -> dict | None:
+    """메인 데이터셋의 manifest.json + summary_1y.csv 에서 KPI 로드.
+
+    새 manifest 구조(2026-05-18~)는 메타 정보(selection_policy, webhook_data_guard 등)만 담고
+    summary_kpi/main_variant 키가 없다. KPI는 별도 `{prefix}_summary_1y.csv`(variant별 행)에 있다.
+    manifest에 KPI가 없으면 그 CSV를 읽어 summary_kpi/main_variant를 채워 호환을 유지한다.
+    """
+    base, prefix, _ = _resolve_main_dataset()
+    p = base / f"{prefix}_manifest.json"
+    data: dict = {}
+    if p.exists():
+        try:
+            data = json.loads(p.read_text(encoding="utf-8")) or {}
+        except Exception:  # noqa: BLE001
+            data = {}
+    if not data.get("summary_kpi"):
+        summary_p = base / f"{prefix}_summary_1y.csv"
+        if summary_p.exists():
+            try:
+                df = pd.read_csv(summary_p, encoding="utf-8-sig")
+                if not df.empty:
+                    if "variant" in df.columns:
+                        data["summary_kpi"] = df.to_dict(orient="records")
+                        variants = df["variant"].astype(str).tolist()
+                        if not data.get("main_variant"):
+                            data["main_variant"] = "100k" if "100k" in variants else variants[0]
+                    else:
+                        rec = df.iloc[0].to_dict()
+                        rec["variant"] = "main"
+                        data["summary_kpi"] = [rec]
+                        data["main_variant"] = "main"
+            except Exception:  # noqa: BLE001
+                pass
+    return data or None
+
+
+_LIGHT_EMOJI = {"GREEN": "🟢", "YELLOW": "🟡", "ORANGE": "🟠", "RED": "🔴", "GRAY": "⚪"}
+_LIGHT_ORDER = {"GREEN": 0, "YELLOW": 1, "ORANGE": 2, "RED": 3, "GRAY": 4, "": 5}
+
+
+def _format_signal_cell(light: str, raw_cell: str, name: str = "") -> str:
+    """신호등 셀 표시: 🟢 종목명 형태로 통일."""
+    if pd.isna(light) or not light:
+        return raw_cell or "—"
+    emoji = _LIGHT_EMOJI.get(str(light).upper(), "⚪")
+    txt = name or raw_cell or ""
+    if txt and "(" not in txt and "—" not in str(raw_cell):
+        return f"{emoji} {txt}"
+    if isinstance(raw_cell, str) and any(e in raw_cell for e in _LIGHT_EMOJI.values()):
+        return raw_cell  # 이미 이모지 포함
+    return f"{emoji} {raw_cell}" if raw_cell else emoji
+
+
+def _extract_name_from_cell(cell: str) -> str:
+    """'🟡 하나마이크론(067310)' → '하나마이크론(067310)'"""
+    if pd.isna(cell) or not isinstance(cell, str):
+        return ""
+    for e in _LIGHT_EMOJI.values():
+        cell = cell.replace(e, "").strip()
+    return cell
+
+
+def render_bellguard_signal_table() -> None:
+    """벨가드 신호등표 — 날짜별 r1/r2/r3 + 정렬·필터 토글.
+
+    데이터: bellguard_signal_by_date_1y.csv
+    표시 컬럼: 날짜 / 1위 / 2위 / 3위 / 그날 판정
+    """
+    ds_dir, prefix, ds_label = _resolve_main_dataset()
+    base_p = ds_dir / f"{prefix}_signal_by_date_1y.csv"
+    if not base_p.exists():
+        base_p = _resolve_hybrid_data_path("bellguard_1y/bellguard_signal_by_date_1y.csv")
+    if base_p is None or not base_p.exists():
+        st.warning("BellGuard 신호등 데이터가 없습니다.")
+        return
+    st.caption(f"데이터셋: {ds_label}")
+    try:
+        df = pd.read_csv(base_p, encoding="utf-8-sig")
+    except Exception as exc:  # noqa: BLE001
+        st.error(f"신호등 데이터 로드 실패: {exc}")
+        return
+
+    # 컨트롤 행
+    ctrl = st.columns([1.3, 1.3, 1.3, 2.0])
+    with ctrl[0]:
+        order = st.selectbox("정렬", ["최신순", "과거순"], index=0, key="sig_order")
+    with ctrl[1]:
+        rank_filter = st.selectbox("순위 필터", ["전체", "1위만", "2위만", "3위만"], index=0, key="sig_rank")
+    with ctrl[2]:
+        light_filter = st.selectbox(
+            "신호등 필터", ["전체", "🟢 강세", "🟡 회복", "🟠 실패", "🔴 약세"],
+            index=0, key="sig_light",
+        )
+    with ctrl[3]:
+        search = st.text_input("종목 검색 (이름·코드)", "", key="sig_search").strip()
+
+    # 정렬
+    df["d0_date"] = df["d0_date"].astype(str)
+    df = df.sort_values("d0_date", ascending=(order == "과거순"))
+
+    # 신호등 필터 — 어느 슬롯이라도 매치되면 해당 행 보임
+    if light_filter != "전체":
+        target = {"🟢 강세": "GREEN", "🟡 회복": "YELLOW", "🟠 실패": "ORANGE", "🔴 약세": "RED"}[light_filter]
+        light_cols = ["bellguard_r1_light", "bellguard_r2_light", "bellguard_r3_light"]
+        mask = pd.Series(False, index=df.index)
+        for c in light_cols:
+            if c in df.columns:
+                mask = mask | (df[c].astype(str).str.upper() == target)
+        df = df[mask]
+
+    # 검색 — 셀 텍스트에 포함
+    if search:
+        cell_cols = ["bellguard_r1_cell", "bellguard_r2_cell", "bellguard_r3_cell"]
+        mask = pd.Series(False, index=df.index)
+        for c in cell_cols:
+            if c in df.columns:
+                mask = mask | df[c].astype(str).str.contains(search, case=False, na=False)
+        df = df[mask]
+
+    st.caption(
+        "각 셀의 색은 그 신호일의 **다음 거래일(D+1) 결과**로 사후 판단합니다 — "
+        "🟢 강세 / 🟡 회복 / 🟠 실패 / 🔴 약세 / ⚪ 보합·결과 미발생."
+    )
+    # 표시용 — 컬럼 4개만
+    show_rows = []
+    for _, r in df.iterrows():
+        row = {
+            "날짜": r.get("d0_date", "—"),
+            "1위": r.get("bellguard_r1_cell", "—"),
+            "2위": r.get("bellguard_r2_cell", "—"),
+            "3위": r.get("bellguard_r3_cell", "—"),
+            "그날 판정": r.get("date_verdict", "—"),
+        }
+        # 순위 필터
+        if rank_filter == "1위만":
+            row.pop("2위"); row.pop("3위")
+        elif rank_filter == "2위만":
+            row.pop("1위"); row.pop("3위")
+        elif rank_filter == "3위만":
+            row.pop("1위"); row.pop("2위")
+        show_rows.append(row)
+
+    show_df = pd.DataFrame(show_rows)
+    st.caption(f"표시 중 {len(show_df):,}일 · 정렬: {order} · 클릭은 다음 단계에서 종목상세 연결 예정")
+    st.dataframe(show_df, use_container_width=True, hide_index=True, height=560)
+
+
+# 종목상세 메모 영구 저장 위치
+SECURITY_DETAIL_NOTES_PATH = CLOSINGBELL / "user_notes" / "security_detail_notes.csv"
+
+
+def _save_security_detail_memo(code: str, date: str, key_base: str) -> None:
+    """버튼 클릭 시 세션 메모 4종을 CSV로 영구 저장 (append, 동일 키 update)."""
+    save_clicked = st.button("💾 메모 영구 저장", key=f"{key_base}_save_btn", use_container_width=False)
+    if not save_clicked:
+        return
+    fields = {
+        "pre": st.session_state.get(f"{key_base}_pre", ""),
+        "pattern": st.session_state.get(f"{key_base}_pattern", ""),
+        "post": st.session_state.get(f"{key_base}_post", ""),
+        "miss": st.session_state.get(f"{key_base}_miss", ""),
+        "rule": st.session_state.get(f"{key_base}_rule", ""),
+        "interval": st.session_state.get(f"{key_base}_interval_30default", ""),
+        "entry_guess": st.session_state.get(f"{key_base}_entry_guess", ""),
+    }
+    # 모두 비어있으면 skip
+    if not any(str(v).strip() for v in fields.values()):
+        st.warning("저장할 메모 내용이 없습니다.")
+        return
+    record = {
+        "saved_at": datetime.now().isoformat(timespec="seconds"),
+        "code": code,
+        "d0_date": date,
+        "pre_feeling": fields["pre"],
+        "pattern_memo": fields["pattern"],
+        "post_thought": fields["post"],
+        "missed_or_next": fields["miss"],
+        "observed_rule": fields["rule"],
+        "observed_interval": fields["interval"],
+        "entry_price_guess": fields["entry_guess"],
+    }
+    p = SECURITY_DETAIL_NOTES_PATH
+    p.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        if p.exists():
+            existing = pd.read_csv(p, encoding="utf-8-sig", dtype=str).fillna("")
+            # 같은 (code, d0_date) 행 있으면 update, 없으면 append
+            mask = (existing["code"] == code) & (existing["d0_date"] == date)
+            if mask.any():
+                for k, v in record.items():
+                    existing.loc[mask, k] = str(v)
+                merged = existing
+            else:
+                merged = pd.concat([existing, pd.DataFrame([record])], ignore_index=True)
+        else:
+            merged = pd.DataFrame([record])
+        merged.to_csv(p, index=False, encoding="utf-8-sig")
+        st.success(f"메모 저장 완료: {p.name}")
+    except Exception as exc:  # noqa: BLE001
+        st.error(f"메모 저장 실패: {exc}")
+
+
+def render_security_detail() -> None:
+    """종목 상세 — 차트 + 기업정보 + 메모 (1차 골격).
+
+    심화 작업(이평선·분봉 5/15/30분·수급·DART)은 다음 세션에서 확장.
+    """
+    st.markdown(
+        '<div class="cb-note" style="border-left-color:#0ea5e9;">'
+        '<b>종목 상세 (1차 골격)</b> — 종목 선택 후 차트와 정보, 메모를 한 화면에서 봅니다. '
+        '심화된 일봉/분봉 차트·수급·DART 정보는 다음 단계에서 확장합니다.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    ds_dir, prefix, ds_label = _resolve_main_dataset()
+    # signal_rows 우선 (pricecap이 chart_review 미생성), fallback chart_review
+    base_p = ds_dir / f"{prefix}_signal_rows_1y.csv"
+    if not base_p.exists():
+        base_p = ds_dir / f"{prefix}_chart_review_cases_1y.csv"
+    if not base_p.exists():
+        base_p = _resolve_hybrid_data_path("bellguard_1y/bellguard_chart_review_cases_1y.csv")
+    if base_p is None or not base_p.exists():
+        st.info("종목 상세 데이터가 없습니다.")
+        return
+    st.caption(f"데이터셋: {ds_label}")
+    try:
+        cases = pd.read_csv(base_p, encoding="utf-8-sig")
+    except Exception as exc:  # noqa: BLE001
+        st.error(f"케이스 로드 실패: {exc}")
+        return
+    # 신호일 필터는 signal_date(웹훅 발송일) 기준. 3일 active pool이라
+    # d0_date(실제 D0 등장일)와 signal_date가 다를 수 있어, 신호등표와
+    # 일관되게 보이려면 signal_date를 써야 한다 (2026-05-18 버그 수정).
+    filter_col = "signal_date" if "signal_date" in cases.columns else "d0_date"
+    if filter_col in cases.columns:
+        cases[filter_col] = cases[filter_col].astype(str).str[:10]
+        cases = cases.sort_values(filter_col, ascending=False)
+
+    # 선택 UI — 신호일 달력 위젯(거래일만 valid, 가장 가까운 거래일로 fallback)
+    valid_dates = sorted(cases.get(filter_col, pd.Series(dtype=str)).unique().tolist())
+    if not valid_dates:
+        st.info("선택 가능한 신호일이 없습니다.")
+        return
+    valid_date_objs = sorted({pd.to_datetime(d).date() for d in valid_dates})
+    min_d, max_d = valid_date_objs[0], valid_date_objs[-1]
+    sel_cols = st.columns([2, 2])
+    with sel_cols[0]:
+        # 달력 위젯 (Streamlit 한계: 거래일만 비활성화 못 함 → 가장 가까운 거래일로 snap)
+        picked = st.date_input(
+            "신호일 (달력)",
+            value=max_d, min_value=min_d, max_value=max_d, key="sd_date_calendar",
+            help="신호등표의 그 날(웹훅 발송일) 기준. D0 등장일은 종목별로 다를 수 있습니다 (3일 감시풀).",
+        )
+        if picked not in set(valid_date_objs):
+            picked = max((d for d in valid_date_objs if d <= picked), default=valid_date_objs[0])
+            st.caption(f"⤷ 가장 가까운 거래일로 조정: **{picked}**")
+        sel_date = picked.isoformat()
+    with sel_cols[1]:
+        day = cases[cases[filter_col] == sel_date]
+        name_col = "name" if "name" in day.columns else (
+            "stock_label" if "stock_label" in day.columns else None
+        )
+        if name_col:
+            stock_opts = day[name_col].astype(str).unique().tolist()
+            sel_stock = st.selectbox("종목", stock_opts, key="sd_stock") if stock_opts else None
+        else:
+            sel_stock = None
+    # 결과 표시 — 체크박스 제거 후 상시 표시 (사용자 2026-05-18 피드백)
+    show_result = True
+
+    if not sel_stock:
+        st.info("종목을 선택하면 상세가 표시됩니다.")
+        return
+
+    row = day[day[name_col].astype(str) == sel_stock]
+    if row.empty:
+        st.info("선택한 케이스를 찾을 수 없습니다.")
+        return
+    r = row.iloc[0]
+
+    code = str(r.get("code", ""))
+    # 차트·분봉·D0 마커·D+N·기준가·메모 모두 신호일(웹훅 발송일) 기준으로 통일
+    # — 사용자 2026-05-18 피드백 ("d0 감시 기준이 아닌 웹훅 날짜 기준")
+    # 실제 D0 등장일(d0_date)은 헤더 캡션에 별도 표기 (감시 D+N).
+    date = str(r.get("signal_date", ""))[:10] or str(r.get("d0_date", ""))[:10]
+    key_base = f"sd_memo_{code}_{date}"
+
+    # 상단 카드: 기본 정보 — "D0" 라벨을 "신호일" 로 변경
+    head = st.columns([2, 2, 2, 2])
+    with head[0]:
+        st.markdown(f"### 🛡 {r.get('name', '—')}")
+        st.caption(f"{r.get('code', '—')} · {r.get('market', '—')}")
+    with head[1]:
+        result_light = str(r.get("traffic_light") or "").upper()
+        live_light = str(r.get("bellguard_live_light") or "").upper()
+        light = result_light or live_light
+        emoji = _LIGHT_EMOJI.get(light, "⚪")
+        if result_light and result_light != "GRAY":
+            st.metric("결과 신호등", f"{emoji} {result_light}")
+            if live_light and live_light != result_light:
+                live_emoji = _LIGHT_EMOJI.get(live_light, "⚪")
+                st.caption(f"선정 당시 상태: {live_emoji} {live_light}")
+        elif light in ("", "GRAY"):
+            st.metric("결과 신호등", f"{emoji} 결과 미발생")
+            st.caption("D+1 결과가 나와야 색이 정해집니다.")
+        else:
+            st.metric("선정 상태", f"{emoji} {light}")
+            st.caption("아직 결과 신호등이 확정되지 않은 현재/미래 케이스입니다.")
+    with head[2]:
+        score = r.get("bellguard_score") or r.get("source_score")
+        try:
+            sv = float(score)
+            if 0 <= sv <= 1.0001:
+                sv *= 100
+            st.metric("BellGuard 점수", f"{sv:.1f}")
+        except (TypeError, ValueError):
+            st.metric("BellGuard 점수", "—")
+    with head[3]:
+        sig_d = str(r.get("signal_date", ""))[:10] or "—"
+        d0_d = str(r.get("d0_date", ""))[:10] or "—"
+        st.metric("신호일 (웹훅)", sig_d)
+        if d0_d != "—" and d0_d != sig_d:
+            try:
+                age_days = (pd.to_datetime(sig_d).date() - pd.to_datetime(d0_d).date()).days
+                st.caption(f"감시 등록일: {d0_d} (감시 D+{age_days})")
+            except Exception:  # noqa: BLE001
+                st.caption(f"감시 등록일: {d0_d}")
+        elif d0_d != "—":
+            st.caption(f"감시 등록일: {d0_d} (당일)")
+
+    # 근거 / 체크
+    st.markdown("#### 근거 / 체크 포인트")
+    reason = str(
+        r.get("bellguard_reason_auto") or r.get("bellguard_reason")
+        or r.get("traffic_reason") or ""
+    ).strip()
+    if not reason or reason.lower() == "nan":
+        # 산출된 컬럼이 없으면 D0 등락·거래량 조합으로 자동 생성
+        bits = []
+        d0 = r.get("d0_pct_change") or r.get("d0_ret_pct")
+        if pd.notna(d0):
+            try:
+                bits.append(f"감시 등록일 {float(d0):+.1f}%")
+            except (TypeError, ValueError):
+                pass
+        vr = r.get("volume_ratio_vs_20d")
+        if pd.notna(vr):
+            try:
+                bits.append(f"거래량 20일대비 {float(vr):.1f}배")
+            except (TypeError, ValueError):
+                pass
+        reason = " / ".join(bits) if bits else "—"
+    # Codex bellguard_reason 텍스트의 영문 약어를 한글로 병기 (사용자 2026-05-19 피드백)
+    reason_kr = (
+        reason.replace("D0+", "감시 D+")
+              .replace("D0 +", "감시 등록일 +")
+              .replace("D0 -", "감시 등록일 -")
+    )
+    st.markdown(f"- **근거:** {reason_kr}")
+
+    # 신호일 15:00 기준 지표. 새 BellGuard 데이터셋 컬럼을 우선 사용하고, 구버전 데이터만 즉석 계산으로 보완한다.
+    sig_extras: list[str] = []
+    try:
+        _ep_raw = r.get("entry_price_used") or r.get("entry_price_1500") or r.get("entry_price_hint") or r.get("d0_close")
+        _ep_val = float(_ep_raw) if pd.notna(_ep_raw) else None
+    except (TypeError, ValueError):
+        _ep_val = None
+    _sig_d = str(r.get("signal_date", ""))[:10]
+    if _sig_d:
+        _sig_pct = r.get("signal_day_pct_change_1500")
+        if pd.isna(_sig_pct) or str(_sig_pct).strip() == "":
+            _sig_pct = compute_signal_day_pct_change(code, _sig_d, _ep_val)
+        if _sig_pct is not None:
+            try:
+                sig_extras.append(f"신호일 15시 등락률 {float(_sig_pct):+.1f}%")
+            except (TypeError, ValueError):
+                pass
+        _signal_value_eok = r.get("signal_trading_value_to_1500_eok")
+        if pd.notna(_signal_value_eok) and str(_signal_value_eok).strip() != "":
+            try:
+                sig_extras.append(f"15시 거래대금 {float(_signal_value_eok):.0f}억")
+            except (TypeError, ValueError):
+                pass
+        _signal_volume = r.get("signal_volume_to_1500")
+        if pd.notna(_signal_volume) and str(_signal_volume).strip() != "":
+            try:
+                sig_extras.append(f"15시 거래량 {float(_signal_volume) / 10000:.0f}만주")
+            except (TypeError, ValueError):
+                pass
+        _retention = r.get("signal_volume_retention_vs_d0")
+        if pd.notna(_retention) and str(_retention).strip() != "":
+            try:
+                sig_extras.append(f"D0거래량대비 {float(_retention) * 100:.0f}%")
+            except (TypeError, ValueError):
+                pass
+        _vs_d0_close = r.get("signal_vs_d0_close_pct")
+        if pd.notna(_vs_d0_close) and str(_vs_d0_close).strip() != "":
+            try:
+                sig_extras.append(f"D0종가대비 {float(_vs_d0_close):+.1f}%")
+            except (TypeError, ValueError):
+                pass
+        _vs_d0_high = r.get("signal_vs_d0_high_pct")
+        if pd.notna(_vs_d0_high) and str(_vs_d0_high).strip() != "":
+            try:
+                sig_extras.append(f"D0고가대비 {float(_vs_d0_high):+.1f}%")
+            except (TypeError, ValueError):
+                pass
+        _rsi = r.get("signal_rsi14_1500")
+        if pd.isna(_rsi) or str(_rsi).strip() == "":
+            _rsi = compute_rsi14(code, _sig_d)
+        if _rsi is not None:
+            try:
+                _rsi_float = float(_rsi)
+            except (TypeError, ValueError):
+                _rsi_float = None
+            if _rsi_float is not None and _rsi_float >= 70:
+                _rsi_tag = " (과매수)"
+            elif _rsi_float is not None and _rsi_float <= 30:
+                _rsi_tag = " (과매도)"
+            else:
+                _rsi_tag = ""
+            if _rsi_float is not None:
+                sig_extras.append(f"RSI(14) {_rsi_float:.0f}{_rsi_tag}")
+    if sig_extras:
+        st.markdown(f"- **신호일 지표:** {' · '.join(sig_extras)}")
+
+    st.markdown("- **체크:** 15시 가격 지지 · VWAP/전고점 부근 반응 · 거래량 유지 여부")
+
+    # ──────── ① 차트·수급·재무 (위로 이동, 사용자 피드백 반영) ────────
+    st.markdown("---")
+    st.markdown("### 차트 · 수급 · 재무")
+    if IS_ONLINE_MODE:
+        st.info(
+            "🌐 온라인 모드 — 로컬 raw 데이터(일봉·분봉·수급·DART parquet/json)에 의존하는 화면입니다. "
+            "온라인 배포본은 경량 데이터셋만 포함되어 차트가 표시되지 않을 수 있습니다. "
+            "정밀 복기는 로컬에서 띄워 주세요."
+        )
+    entry_price = None
+    try:
+        entry_price = float(r.get("entry_price_used") or r.get("entry_price_1500") or r.get("entry_price_hint") or r.get("d0_close"))
+    except (TypeError, ValueError):
+        entry_price = None
+    info_dict = {
+        "stock_code": code,
+        "signal_date": date,
+        "entry_price_1500": entry_price,
+        "d0_close": r.get("d0_close"),
+    }
+    chart_tabs = st.tabs(["일봉 (MA)", "분봉 (5/15/30분)", "수급 (외인·기관·프로그램)", "재무 (DART)"])
+    with chart_tabs[0]:
+        try:
+            render_daily_chart_with_ma(code, date)
+            st.caption(
+                "MA(이동평균)는 전체 일봉 데이터로 미리 계산된 값을 현재 view 구간만 잘라서 표시합니다 "
+                "(view 시작 시점에서 다시 계산하지 않음)."
+            )
+        except Exception as exc:  # noqa: BLE001
+            st.info(f"일봉 차트 표시 불가: {exc}")
+    with chart_tabs[1]:
+        try:
+            mdf = load_minute(code)
+            if mdf.empty:
+                st.info("로컬 분봉 parquet이 없습니다. (`data/market/minute_ohlcv/{code}.parquet`)")
+            else:
+                plot_one_year_minute_chart(
+                    mdf,
+                    info_dict,
+                    r.to_dict(),
+                    show_outcome=False,
+                    key_prefix=f"sd_{code}_{date}",
+                )
+                st.caption("분봉은 거래일만 압축 표시되며, 휴장일/주말 공백은 자동 제거됩니다. (기간 고정: 웹훅일+D+1~D+5 전체)")
+        except Exception as exc:  # noqa: BLE001
+            st.info(f"분봉 차트 표시 불가: {exc}")
+    with chart_tabs[2]:
+        try:
+            render_investor_flow_chart(code, date, lookback_days=40)
+            render_investor_flow_table(code, date, lookback_days=22)
+        except Exception as exc:  # noqa: BLE001
+            st.info(f"수급 데이터 표시 불가: {exc}")
+    with chart_tabs[3]:
+        try:
+            render_financials_card(
+                code,
+                name=str(r.get("name", "") or ""),
+                market=str(r.get("market", "") or ""),
+            )
+        except Exception as exc:  # noqa: BLE001
+            st.info(f"DART 재무 표시 불가: {exc}")
+
+    # ──────── ② 메모 + 결과 (결과를 메모 옆으로 가깝게 배치) ────────
+    st.markdown("---")
+    st.markdown("### 메모 · 결과")
+
+    # 관찰 기준 — 차트에서 고른 자동감시 룰/분봉 단위 자동 표시 + 가정 진입가 입력
+    obs_cols = st.columns([1, 1, 2])
+    with obs_cols[0]:
+        chart_rule = st.session_state.get(f"{key_base}_rule", "기본")
+        st.caption("자동감시 룰 (차트에서 선택)")
+        st.markdown(f"**{chart_rule}**")
+    with obs_cols[1]:
+        chart_interval = st.session_state.get(f"{key_base}_interval_30default", "30분")
+        st.caption("본 분봉 단위 (차트에서 선택)")
+        st.markdown(f"**{chart_interval}**")
+    with obs_cols[2]:
+        st.text_input(
+            "가정 진입가 (원)",
+            key=f"{key_base}_entry_guess",
+            placeholder="예: 13380 · 메모와 함께 저장됩니다",
+        )
+
+    memo_cols = st.columns([3, 3, 2])
+    with memo_cols[0]:
+        st.markdown("#### 사전 느낌")
+        st.caption("결과 보기 전, 첫 인상부터 적어두면 다음에 비교 가능")
+        st.text_area("첫 인상 / 우려 / 기대", key=f"{key_base}_pre", height=140, label_visibility="collapsed")
+        st.markdown("##### 패턴 메모")
+        st.text_area("패턴 메모", key=f"{key_base}_pattern", height=100, label_visibility="collapsed")
+    with memo_cols[1]:
+        st.markdown("#### 사후 생각")
+        st.caption("결과 확인 후 추가 (오른쪽 칼럼)")
+        st.text_area("실제 결과와 비교한 생각", key=f"{key_base}_post", height=140, label_visibility="collapsed")
+        st.markdown("##### 놓친 점 · 다음 룰")
+        st.text_area("놓친 점 / 다음 룰 아이디어", key=f"{key_base}_miss", height=100, label_visibility="collapsed")
+    with memo_cols[2]:
+        st.markdown("#### D+1~D+5 결과")
+        result_keys = [
+            ("max_gain_d1d5", "최대 상승"),
+            ("max_loss_d1d5", "최대 하락"),
+            ("d1_close_return_pct", "D+1 종가"),
+            ("plus3_first", "+3 먼저"),
+            ("minus3_first", "-3 먼저"),
+            ("d5_last_price_return_from_1500", "D+5 종가"),
+        ]
+        for k, lbl in result_keys:
+            v = r.get(k)
+            if pd.isna(v):
+                st.metric(lbl, "—")
+            else:
+                try:
+                    fv = float(v)
+                    if k in ("plus3_first", "minus3_first"):
+                        st.metric(lbl, "Y" if fv else "N")
+                    else:
+                        st.metric(lbl, f"{fv:+.2f}%")
+                except (TypeError, ValueError):
+                    st.metric(lbl, str(v))
+
+    _save_security_detail_memo(code, date, key_base)
+    # 결과는 위쪽 메모 옆 컬럼(memo_cols[2])에 통합. 별도 하단 블록 제거.
+
+
 def render_v2_hybrid_signal_board() -> None:
-    """V2 vs HYBRID 신호등 비교 — 복기 탭의 본진 화면."""
+    """벨가드 안정후보 신호등 복기 — V2는 기록/비교용으로만 보존."""
     st.markdown(
         '<div class="cb-note" style="border-left-color:#6366f1;">'
-        '<b>V2 vs HYBRID 비교</b> — 같은 D0 날짜에 두 전략이 어떤 후보를 뽑았고, 결과가 얼마나 다른지 보는 복기 화면입니다. '
-        '운영 본진은 여전히 <b>V2</b>이며 HYBRID는 <b>shadow 후보</b>입니다 (실전 전환 아님).'
+        '<b>벨가드 안정후보 복기</b> — 1년치 D0 후보를 신호등으로 되돌아보는 화면입니다. '
+        '기존 V2는 삭제하지 않고 기록/비교용 데이터셋으로 보존합니다.'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    wide_p = _resolve_hybrid_data_path("v2_hybrid_signal_wide_by_date_1y.csv")
-    ver_p = _resolve_hybrid_data_path("v2_hybrid_signal_version_summary_1y.csv")
-    month_p = _resolve_hybrid_data_path("v2_hybrid_signal_month_summary_1y.csv")
+    ds_dir, prefix, _ = _resolve_main_dataset()
+    wide_p = ds_dir / f"{prefix}_signal_by_date_1y.csv"
+    if not wide_p.exists():
+        wide_p = _resolve_hybrid_data_path("bellguard_1y/bellguard_signal_by_date_1y.csv") or _resolve_hybrid_data_path("v2_hybrid_signal_wide_by_date_1y.csv")
+    ver_p = ds_dir / f"{prefix}_version_summary_1y.csv"
+    if not ver_p.exists():
+        ver_p = _resolve_hybrid_data_path("bellguard_1y/bellguard_version_summary_1y.csv") or _resolve_hybrid_data_path("v2_hybrid_signal_version_summary_1y.csv")
+    month_p = ds_dir / f"{prefix}_month_summary_1y.csv"
+    if not month_p.exists():
+        month_p = _resolve_hybrid_data_path("bellguard_1y/bellguard_month_summary_1y.csv") or _resolve_hybrid_data_path("v2_hybrid_signal_month_summary_1y.csv")
 
     if wide_p is None:
         st.warning(
-            "V2 vs HYBRID 비교 데이터가 아직 도착하지 않았습니다. Codex 산출 "
-            "`v2_hybrid_signal_wide_by_date_1y.csv` 등을 "
-            "`bell-dashboard/data/closingbell/online_v2/latest/` 또는 Downloads에 두면 자동으로 표시됩니다."
+            "BellGuard 복기 데이터가 아직 도착하지 않았습니다. Codex 산출 "
+            "`bellguard_1y/bellguard_signal_by_date_1y.csv` 등을 "
+            "`bell-dashboard/data/closingbell/online_v2/latest/`에 두면 자동으로 표시됩니다."
         )
         return
 
-    # KPI 영역
+    # KPI 영역 — 매일 볼 화면이 아니라 expander로 접기 (PDF에서 정식 비교 제공)
     if ver_p is not None:
+      with st.expander("1년 KPI 요약 (자세한 비교는 PDF 리포트 참고)", expanded=False):
         try:
             ver_df = pd.read_csv(ver_p)
-            st.subheader("1년 KPI 비교")
             metric_cols = [c for c in ver_df.columns if c not in ("version", "compare_group")]
             label_col = "version" if "version" in ver_df.columns else (
                 "compare_group" if "compare_group" in ver_df.columns else ver_df.columns[0]
@@ -6134,9 +7308,11 @@ def render_v2_hybrid_signal_board() -> None:
             for i, (_, row) in enumerate(ver_df.iterrows()):
                 with cols[i % len(cols)]:
                     label = str(row.get(label_col, "-"))
-                    # 표시명 정리
-                    label = label.replace("CURRENT_WEBHOOK_V2_TOP3", "현행 V2 (운영)")
-                    label = label.replace("NEW_D0_1500_HYBRID_TOP3", "HYBRID (shadow)")
+                    # 표시명 정리 — 데이터 원본 ID → 사용자 친화 라벨
+                    label = label.replace("CURRENT_WEBHOOK_V2_TOP3", "기존 V2 기록후보")
+                    label = label.replace("NEW_D0_1500_HYBRID_TOP3", "벨가드 안정후보")
+                    label = label.replace("HYBRID_D0_RISK_FILTER", "벨가드 안정후보")
+                    label = label.replace("HYBRID", "벨가드")
                     st.markdown(f"**{label}**")
                     show_keys = [
                         ("green_rate", "GREEN", "{:.1%}"),
@@ -6153,14 +7329,68 @@ def render_v2_hybrid_signal_board() -> None:
         except Exception as exc:  # noqa: BLE001
             st.caption(f"version summary 로드 실패: {exc}")
 
+    # (NEW 2026-05-18) 최신일 후보 풀 요약 — 사용자 의문 "Top3가 다 안 보임"에 즉시 답하는 카드
+    candidates_all_p = ds_dir / f"{prefix}_latest_candidates_all.csv"
+    if candidates_all_p.exists():
+        try:
+            cand_df = pd.read_csv(candidates_all_p, encoding="utf-8-sig")
+            if not cand_df.empty:
+                latest_sig = str(cand_df.get("signal_date", pd.Series(["—"])).iloc[0])[:10]
+                total_n = len(cand_df)
+                ready_n = int(
+                    pd.to_numeric(cand_df.get("webhook_data_ready", 0), errors="coerce")
+                    .fillna(0)
+                    .astype(int)
+                    .sum()
+                )
+                top3_n = int(
+                    pd.to_numeric(cand_df.get("selected_top3", 0), errors="coerce")
+                    .fillna(0)
+                    .astype(int)
+                    .sum()
+                )
+                outside_n = total_n - top3_n
+                st.markdown(f"##### 최신일({latest_sig}) 후보 풀 요약")
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("원천 후보", f"{total_n}개")
+                c2.metric("data_ready", f"{ready_n}개")
+                c3.metric("Top3 선정", f"{top3_n}개")
+                c4.metric("Top3 밖", f"{outside_n}개")
+                st.caption(
+                    "Codex audit (2026-05-18) 기준 1년 255일 모두 Top3 3개 정상. "
+                    "신호등표에서 빈칸으로 느껴지면 화면 필터/스크롤 영향이며 데이터 부족이 아닙니다."
+                )
+                with st.expander("후보 풀 전체 + Top3 선정 / 제외 사유 / 중복 종목 표시", expanded=False):
+                    show_cand_cols = [
+                        "code", "name", "d0_date", "trading_day_age", "bellguard_score",
+                        "webhook_data_ready", "signal_minute_rows",
+                        "duplicate_in_latest_pool", "duplicate_score_rank_for_code",
+                        "selected_top3", "display_reason",
+                    ]
+                    label_map = {
+                        "code": "코드", "name": "종목", "d0_date": "D0",
+                        "trading_day_age": "감시일차", "bellguard_score": "BG점수",
+                        "webhook_data_ready": "data_ready", "signal_minute_rows": "분봉행수",
+                        "duplicate_in_latest_pool": "중복",
+                        "duplicate_score_rank_for_code": "중복순위",
+                        "selected_top3": "Top3", "display_reason": "사유",
+                    }
+                    disp = cand_df[[c for c in show_cand_cols if c in cand_df.columns]].rename(columns=label_map)
+                    st.dataframe(
+                        disp, use_container_width=True, hide_index=True,
+                        height=min(520, 44 + 30 * len(disp)),
+                    )
+        except Exception as exc:  # noqa: BLE001
+            st.caption(f"최신일 후보 풀 로드 실패: {exc}")
+
     # 메인 신호등 표
-    st.subheader("날짜별 신호등 (1년)")
+    st.subheader("벨가드 날짜별 신호등 (1년)")
     try:
         wide_df = pd.read_csv(wide_p)
         st.dataframe(wide_df, use_container_width=True, height=520, hide_index=True)
         st.caption(
             f"표시 중 {len(wide_df):,}행 · 출처 {wide_p} · "
-            "행 클릭 → 상세 차트 복기는 다음 Phase에서 연결 예정 (일봉/5분봉 캔들 + 진입가 라인)."
+            "상세 차트용 일봉/분봉 캔들은 bellguard_1y 패키지에 함께 보존되어 있습니다."
         )
     except Exception as exc:  # noqa: BLE001
         st.error(f"wide 표 로드 실패: {exc}")
@@ -6176,36 +7406,205 @@ def render_v2_hybrid_signal_board() -> None:
 
 
 def render_today_hybrid_shadow() -> None:
-    """오늘 탭의 HYBRID shadow 영역. 운영 본진이 아님을 명시."""
+    """오늘 탭의 벨가드 안정후보 메인 영역. 현재일 미래 결과는 표시하지 않는다."""
     st.markdown(
-        '<div class="cb-note" style="border-left-color:#f59e0b; background:rgba(245,158,11,0.08);">'
-        '🧪 <b>HYBRID는 운영 본진이 아닙니다.</b> 실전 전환 전 2~4주 shadow 검증 단계입니다.<br>'
-        '운영 웹훅은 기존 V2가 발송하며, 이 화면은 비교/연구 용도입니다.'
+        '<div class="cb-note" style="border-left-color:#10b981; background:rgba(16,185,129,0.08);">'
+        '🛡️ <b>오늘의 메인 표시: 벨가드 안정후보</b><br>'
+        '현재일 후보 파일은 D+1~D+5 결과를 포함하지 않습니다. 실제 발송은 preview/가드 확인 후 별도 단계에서만 진행합니다.'
         '</div>',
         unsafe_allow_html=True,
     )
-    today_p = _resolve_hybrid_data_path("hybrid_top3_latest.csv")
-    if today_p is not None:
+    # 2026-05-19 점수 모델 전환 안내 — D0 고정 → 신호일 15시 문맥
+    st.markdown(
+        '<div class="cb-note" style="border-left-color:#f59e0b; background:rgba(245,158,11,0.08);">'
+        '📣 <b>2026-05-19~ 점수 모델 전환</b> — BellGuard 점수가 D0 고정 점수에서 '
+        '<b>신호일 15시 문맥 기반</b>으로 전환되었습니다 '
+        '(<code>BELLGUARD_SIGNAL_CONTEXT_V1_20260519</code>). '
+        '같은 종목이라도 감시 D+1·D+2에 다시 등장할 때는 그 신호일의 가격·거래량·RSI 환경을 평가해 점수가 새로 계산됩니다. '
+        '<b>이전 D0 점수 기준 Top3와 다른 종목이 나올 수 있는 것이 정상</b>입니다.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    # 메인 데이터셋 자동 선택 (pricecap_1y > bellguard_1y)
+    ds_dir, prefix, ds_label = _resolve_main_dataset()
+    today_p = ds_dir / f"{prefix}_top3_latest.csv"
+    if not today_p.exists():
+        today_p = _resolve_hybrid_data_path("bellguard_1y/bellguard_top3_latest.csv") or _resolve_hybrid_data_path("hybrid_top3_latest.csv")
+    st.caption(f"데이터셋: {ds_label}")
+    if today_p is not None and today_p.exists():
         try:
-            df = pd.read_csv(today_p)
-            st.subheader("오늘자 HYBRID Top3 (shadow)")
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            df = pd.read_csv(today_p, encoding="utf-8-sig")
+            st.subheader("벨가드 안정후보 Top3")
+            show_cols = [
+                "pricecap_rank", "bellguard_rank", "name", "code", "market", "d0_date",
+                "bellguard_score", "bellguard_live_light", "bellguard_reason",
+                "d0_pct_change", "distance_from_d0_high_pct", "volume_ratio_vs_20d",
+                "entry_price_used", "overheat_score", "health_score", "regime_score", "regime",
+                "daily_latest", "minute_latest", "inst_trade_latest", "short_sale_latest",
+            ]
+            label_map = {
+                "pricecap_rank": "순위",
+                "bellguard_rank": "순위",
+                "name": "종목",
+                "code": "코드",
+                "market": "시장",
+                "d0_date": "D0",
+                "bellguard_score": "BellGuard",
+                "bellguard_live_light": "신호등",
+                "bellguard_reason": "근거",
+                "d0_pct_change": "D0 등락",
+                "distance_from_d0_high_pct": "고가대비",
+                "volume_ratio_vs_20d": "20일대비",
+                "entry_price_used": "15시가",
+                "overheat_score": "과열",
+                "health_score": "건전성",
+                "regime_score": "국면",
+                "regime": "장세",
+                "daily_latest": "일봉",
+                "minute_latest": "분봉",
+                "inst_trade_latest": "외인/기관",
+                "short_sale_latest": "공매도",
+            }
+            show = df[[c for c in show_cols if c in df.columns]].rename(columns=label_map)
+            st.dataframe(show, use_container_width=True, hide_index=True, height=min(240, 44 + 38 * len(show)))
+            st.caption(f"출처: {today_p} · 현재일 후보에는 미래 성과 컬럼을 넣지 않음")
         except Exception as exc:  # noqa: BLE001
-            st.caption(f"hybrid_top3_latest 로드 실패: {exc}")
+            st.caption(f"오늘자 벨가드 데이터 로드 실패: {exc}")
     else:
         st.info(
-            "오늘자 HYBRID Top3 산출 데이터는 Codex Phase B 산출 대기 중입니다 "
-            "(`hybrid_top3_latest.csv` 가 도착하면 자동 표시)."
+            "오늘자 벨가드 안정후보 Top3는 다음 산출 슬롯 대기 중입니다 "
+            "(`bellguard_1y/bellguard_top3_latest.csv` 도착 시 자동 표시)."
         )
 
-    # 1년 비교 카드만 우선
-    ver_p = _resolve_hybrid_data_path("v2_hybrid_signal_version_summary_1y.csv")
-    if ver_p is not None:
-        with st.expander("1년 비교 요약 (V2 vs HYBRID)", expanded=False):
-            try:
-                st.dataframe(pd.read_csv(ver_p), use_container_width=True, hide_index=True)
-            except Exception as exc:  # noqa: BLE001
-                st.caption(f"version summary 로드 실패: {exc}")
+
+def render_today_v2_record() -> None:
+    """기존 V2는 비교/기록용으로 접어서 표시한다."""
+    v2_p = _resolve_hybrid_data_path("v2_record_1y/v2_record_top3_latest.csv") or _resolve_hybrid_data_path("v2_top3_latest.csv")
+    if v2_p is None:
+        st.caption("기존 V2 기록후보 파일이 없습니다.")
+        return
+    try:
+        df = pd.read_csv(v2_p, encoding="utf-8-sig")
+        show_cols = ["role", "name", "code", "market", "score_v2", "d0_date", "entry_price_1500", "daily_latest_date", "minute_latest_date"]
+        label_map = {
+            "role": "기록 슬롯",
+            "name": "종목",
+            "code": "코드",
+            "market": "시장",
+            "score_v2": "V2",
+            "d0_date": "D0",
+            "entry_price_1500": "15시가",
+            "daily_latest_date": "일봉",
+            "minute_latest_date": "분봉",
+        }
+        show = df[[c for c in show_cols if c in df.columns]].rename(columns=label_map)
+        st.dataframe(show, use_container_width=True, hide_index=True, height=min(220, 44 + 38 * len(show)))
+        st.caption(f"출처: {v2_p} · V2 산식은 보존, 메인 표시에서는 제외")
+    except Exception as exc:  # noqa: BLE001
+        st.caption(f"V2 기록후보 로드 실패: {exc}")
+
+
+def render_bellguard_intro_cards() -> None:
+    """벨가드 안정후보의 도달률·안정성·보는 법을 카드로 소개 (manifest 기반 동적)."""
+    st.markdown("### 벨가드 안정후보란?")
+    # 메인 variant 찾기
+    manifest = _load_main_manifest_kpi()
+    main_kpi: dict | None = None
+    n_sample = "—"
+    dataset_label = "데이터 미감지"
+    if manifest:
+        main_key = manifest.get("main_variant", "100k")
+        for v in manifest.get("summary_kpi", []):
+            if v.get("variant") == main_key:
+                main_kpi = v
+                break
+        dataset_label = manifest.get("dataset_name", "—")
+        if main_kpi:
+            n_sample = f"{main_kpi.get('sample_n', '—')}건"
+    st.markdown(
+        f'<div class="cb-note" style="border-left-color:#16a34a;">'
+        f'<b>더 크게 먹기 위한 후보가 아니라, 덜 깨지는 후보를 고르기 위한 안정 필터입니다.</b><br>'
+        f'데이터셋: {dataset_label} · 표본 {n_sample} · D0 Strict (active_d0_3d_pool) 기반.'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    # 1년 도달률 카드 4개 — manifest 우선, 없으면 placeholder
+    def _kpi(key, fallback="—"):
+        if main_kpi and key in main_kpi and main_kpi[key] is not None:
+            return f"{float(main_kpi[key]):.1f}%"
+        return fallback
+    cols = st.columns(4)
+    cards = [
+        ("🟢 강세 (GREEN)", _kpi("green_rate"), "D+1 저가·종가 모두 진입 위", "#16a34a"),
+        ("🔴 약세 (RED)",  _kpi("red_rate"),   "D+1 진입 위로 한 번도 못 감", "#dc2626"),
+        ("+3% 먼저 도달", _kpi("plus3_first_rate"), "5일 안에 +3을 -3보다 먼저", "#16a34a"),
+        ("-3% 먼저 도달", _kpi("minus3_first_rate"), "5일 안에 -3을 +3보다 먼저", "#f97316"),
+    ]
+    for col, (h, val, sub, c) in zip(cols, cards):
+        with col:
+            st.markdown(
+                f'<div class="cb-info-card">'
+                f'<div class="cb-key" style="margin-bottom:6px;">{h}</div>'
+                f'<div style="font-size:2rem; font-weight:800; color:{c}; line-height:1.1;">{val}</div>'
+                f'<div class="cb-key" style="margin-top:6px; font-size:0.82rem;">{sub}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    # 하락 도달률 (안정성) — manifest 우선
+    st.markdown("#### 큰 손실은 얼마나 자주 오는가 (낮을수록 좋음)")
+    cols2 = st.columns(3)
+    downs = [
+        ("-3% 도달", _kpi("minus3_touch_rate"), "5일 안 한 번이라도 -3% 아래", "#f97316"),
+        ("-5% 도달", _kpi("minus5_touch_rate"), "5일 안 한 번이라도 -5% 아래", "#f97316"),
+        ("-10% 도달", _kpi("minus10_touch_rate", _kpi("minus5_touch_rate")), "5일 안 한 번이라도 -10% 아래", "#16a34a"),
+    ]
+    for col, (h, val, sub, c) in zip(cols2, downs):
+        with col:
+            st.markdown(
+                f'<div class="cb-info-card">'
+                f'<div class="cb-key" style="margin-bottom:6px;">{h}</div>'
+                f'<div style="font-size:1.6rem; font-weight:700; color:{c}; line-height:1.1;">{val}</div>'
+                f'<div class="cb-key" style="margin-top:6px; font-size:0.82rem;">{sub}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    # 보는 법
+    with st.expander("📖 처음 보시는 분 — 신호등과 보는 법", expanded=False):
+        st.markdown(
+            """
+<div style="font-size:1.05rem; line-height:1.75; color:#0f172a;">
+  <div style="font-size:1.15rem; font-weight:700; margin:4px 0 10px;">신호등 5색 의미</div>
+  <table style="font-size:1.05rem; line-height:1.7; border-collapse:collapse; margin-bottom:14px;">
+    <thead>
+      <tr style="background:#f8fafc;">
+        <th style="text-align:left; padding:6px 14px; border-bottom:1px solid #e5e7eb;">색</th>
+        <th style="text-align:left; padding:6px 14px; border-bottom:1px solid #e5e7eb;">이름</th>
+        <th style="text-align:left; padding:6px 14px; border-bottom:1px solid #e5e7eb;">설명</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="padding:5px 14px; font-size:1.2rem;">🟢</td><td style="padding:5px 14px; font-weight:600;">강세</td><td style="padding:5px 14px;">위로 먼저 가고 잘 버팀</td></tr>
+      <tr><td style="padding:5px 14px; font-size:1.2rem;">🟡</td><td style="padding:5px 14px; font-weight:600;">회복</td><td style="padding:5px 14px;">아래로 흔들렸다 다시 위로 회복</td></tr>
+      <tr><td style="padding:5px 14px; font-size:1.2rem;">🟠</td><td style="padding:5px 14px; font-weight:600;">실패</td><td style="padding:5px 14px;">위로 시도했지만 종가 약함</td></tr>
+      <tr><td style="padding:5px 14px; font-size:1.2rem;">🔴</td><td style="padding:5px 14px; font-weight:600;">약세</td><td style="padding:5px 14px;">아래로 먼저 깨지는 형</td></tr>
+      <tr><td style="padding:5px 14px; font-size:1.2rem;">⚪</td><td style="padding:5px 14px; font-weight:600;">보류</td><td style="padding:5px 14px;">변동 거의 없음 / 데이터 부족</td></tr>
+    </tbody>
+  </table>
+  <div style="font-size:1.15rem; font-weight:700; margin:14px 0 8px;">15시 판단 5단계</div>
+  <ol style="font-size:1.05rem; line-height:1.75; padding-left:22px; margin:0 0 12px;">
+    <li>오늘의 벨가드 Top3와 신호등을 본다.</li>
+    <li>🟢🟡 비중과 🔴 경고를 확인한다.</li>
+    <li>차트(일봉·분봉·이평선)를 직접 본다.</li>
+    <li>급하게 전부 사지 않고 손절 위치부터 정한다.</li>
+    <li>사전 느낌을 메모하고 다음날 사후 비교한다.</li>
+  </ol>
+  <blockquote style="font-size:1.0rem; color:#475569; border-left:3px solid #94a3b8; padding:6px 12px; margin:10px 0 0; background:#f8fafc;">
+    <b>도달률은 "이렇게 갈 확률"이지 "이렇게 간다"가 아닙니다. 매번 차트 직접 확인이 필요합니다.</b>
+  </blockquote>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
 
 
 def render_today_tab(
@@ -6216,34 +7615,22 @@ def render_today_tab(
     picks: pd.DataFrame | None = None,
     scan: dict[str, Any] | None = None,
 ) -> None:
-    """오늘 탭 — 운영 본진 V2 + HYBRID shadow."""
+    """오늘 탭 — BellGuard 메인 + 소개 카드 + V2 기록 보존."""
     st.markdown(
         '<div class="cb-note" style="border-left-color:#10b981; background:rgba(16,185,129,0.08);">'
-        '<b>매수 추천이 아닙니다.</b> Paper Watch / 연구용 감시 화면입니다. '
-        '운영 본진은 V2이고 HYBRID는 shadow 후보입니다.'
+        '<b>투자 권유가 아닙니다.</b> Paper Watch / 수동 복기 화면입니다. '
+        '메인 표시는 벨가드 안정후보이며 기존 V2는 기록용으로 접어 둡니다.'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    if online:
-        st.subheader("📈 V2 Top3 (현행 운영)")
-        render_online_v2_dashboard()
-        st.divider()
-        st.subheader("🧪 HYBRID (shadow)")
-        render_today_hybrid_shadow()
-        return
+    # 1) 오늘의 BellGuard Top3
+    render_today_hybrid_shadow()
 
-    sub_tabs = st.tabs(["📈 V2 Top3 (현행 운영)", "🧪 HYBRID (shadow)", "📊 D0 감시 풀"])
-    with sub_tabs[0]:
-        render_online_v2_dashboard()
-        with st.expander("운영 현황 (구 홈 화면)", expanded=False):
-            if d0_pool is not None and score is not None and picks is not None and scan is not None:
-                render_home(d0_pool, score, picks, scan)
-    with sub_tabs[1]:
-        render_today_hybrid_shadow()
-    with sub_tabs[2]:
-        if d0_pool is not None:
-            render_d0_pool(d0_pool)
+    st.markdown("---")
+    # 2) 벨가드 소개 · 1년 도달률 카드 · 보는 법
+    render_bellguard_intro_cards()
+    # V2 기록후보 표시는 제거. 데이터는 v2_record_1y/ 폴더에 그대로 보존.
 
 
 def render_replay_tab(
@@ -6252,27 +7639,30 @@ def render_replay_tab(
     score: pd.DataFrame | None = None,
     enriched: pd.DataFrame | None = None,
 ) -> None:
-    """복기 탭 — V2 vs HYBRID 신호등 본진 + 보조 복기 화면."""
+    """복기 탭 — 신호등표 + 종목 상세 (벨가드 단독).
+
+    색깔 흐름은 신호등표와 같은 데이터(bellguard_pricecap_signal_by_date_1y)를 보므로
+    별도 sub_tab 으로 분리하지 않고 신호등표 캡션에서 통합 설명.
+    기존 render_prev_close_color_review (1개월·V2 혼합)는 호출에서 제외, 함수는 보존.
+    """
     if online:
-        render_v2_hybrid_signal_board()
-        with st.expander("🟢 색깔 복기 (1개월)", expanded=False):
-            render_prev_close_color_review()
+        sub_tabs = st.tabs(["날짜별 신호등표", "종목 상세"])
+        with sub_tabs[0]:
+            render_bellguard_signal_table()
+        with sub_tabs[1]:
+            render_security_detail()
         return
 
     sub_tabs = st.tabs([
-        "🔁 V2 vs HYBRID 신호등 (본진)",
-        "🟢 색깔 복기 (1개월)",
-        "🖼 1년 차트 복기",
-        "📚 1년치 통합 복기",
+        "날짜별 신호등표",
+        "종목 상세",
     ])
     with sub_tabs[0]:
-        render_v2_hybrid_signal_board()
+        render_bellguard_signal_table()
     with sub_tabs[1]:
-        render_prev_close_color_review()
-    with sub_tabs[2]:
-        render_v2_1y_visual_review()
-    with sub_tabs[3]:
-        render_one_year_backdata(score=score, enriched=enriched)
+        render_security_detail()
+    # render_prev_close_color_review / render_one_year_backdata / render_v2_hybrid_signal_board 는
+    # 함수 정의는 보존 (필요시 복원), 호출에서만 제외.
 
 
 def render_lab_tab(*, online: bool) -> None:
@@ -6314,7 +7704,7 @@ def main() -> None:
     st.title("ClosingBell 수동 복기 대시보드")
     st.caption("읽기 전용 · 실전 주문 아님 · 자동매매 아님 · 수동 검토용")
     st.caption(
-        "운영 본진: 현행 V2 웹훅  ·  복기/연구 본진: V2 vs HYBRID 비교  ·  HYBRID는 shadow 후보 (전환 아님)"
+        "메인 표시: 벨가드 안정후보  ·  기존 V2는 기록/비교용 보존  ·  현재일 후보에는 미래 결과 미노출"
     )
 
     # ── 온라인 (GitHub/Streamlit Cloud) 모드 ──
@@ -6326,14 +7716,12 @@ def main() -> None:
             '</div>',
             unsafe_allow_html=True,
         )
-        tabs = st.tabs(["오늘", "복기", "연구실", "메모"])
+        tabs = st.tabs(["오늘", "복기", "메모"])
         with tabs[0]:
             render_today_tab(online=True)
         with tabs[1]:
             render_replay_tab(online=True)
         with tabs[2]:
-            render_lab_tab(online=True)
-        with tabs[3]:
             render_notes_browser()
         return
 
@@ -6344,14 +7732,12 @@ def main() -> None:
     score = read_csv(str(SCORE_PATH))
     scan = read_json(str(SECRET_SCAN_SUMMARY))
 
-    tabs = st.tabs(["오늘", "복기", "연구실", "메모"])
+    tabs = st.tabs(["오늘", "복기", "메모"])
     with tabs[0]:
         render_today_tab(online=False, d0_pool=d0_pool, score=score, picks=picks, scan=scan)
     with tabs[1]:
         render_replay_tab(online=False, score=score, enriched=enriched)
     with tabs[2]:
-        render_lab_tab(online=False)
-    with tabs[3]:
         render_notes_browser()
 
 

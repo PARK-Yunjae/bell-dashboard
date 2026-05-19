@@ -1,8 +1,8 @@
 ﻿metric,count,rate_pct,note
-fill_filter_total,753,100.0,baseline D0_STRICT_3D_V2_TOP3 selected rows
-fill_filter_passed,744,98.8048,no hard reject reason
-fill_filter_rejected,9,1.1952,hard reject by entry bar or limit-lock proxy
-reject_UPPER_LIMIT_LOCKED_PROXY,9,1.1952,
-warn_LOW_ENTRY_MINUTE_VOLUME_LT_1000,25,3.3201,warning only
-warn_LOW_ENTRY_MINUTE_VALUE_LT_5M_KRW,18,2.3904,warning only
-warn_ENTRY_VOLUME_LT_0_005PCT_DAILY,18,2.3904,warning only
+fill_filter_total,756,100.0,baseline D0_STRICT_3D_V2_TOP3 selected rows
+fill_filter_passed,750,99.2063,no hard reject reason
+fill_filter_rejected,6,0.7937,hard reject by entry bar or limit-lock proxy
+reject_UPPER_LIMIT_LOCKED_PROXY,6,0.7937,
+warn_LOW_ENTRY_MINUTE_VOLUME_LT_1000,20,2.6455,warning only
+warn_ENTRY_VOLUME_LT_0_005PCT_DAILY,14,1.8519,warning only
+warn_LOW_ENTRY_MINUTE_VALUE_LT_5M_KRW,13,1.7196,warning only

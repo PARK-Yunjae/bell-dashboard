@@ -41,3 +41,13 @@ memo/
 # 운영 산출물 / 발송 로그 (절대 push 금지)
 *sent_log*
 *paper_watch_sent_log*
+
+# Streamlit 로컬 실행 로그
+streamlit_*.log
+streamlit_*.out.log
+streamlit_*.err.log
+
+# bellguard_pricecap_1y / bellguard_1y / v2_record_1y / v2_hybrid_1y
+# → online_v2/latest 화이트리스트 안에 있어 자동 포함됨.
+# 다만 bellguard_pricecap_1y 는 d0_strict_1y 로 이름이 바뀌어 더는 사용 안 함.
+# 옛 폴더가 남아 있어도 dataset resolver 우선순위에서 d0_strict_1y 가 이김.

@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-05-17T07:28:08",
+  "target_latest_trading_date_verified": "2026-05-15",
+  "source_dataset": "v2_hybrid_1y",
+  "source_versions": [
+    "CURRENT_WEBHOOK_V2_TOP3",
+    "NEW_D0_1500_HYBRID_TOP3"
+  ],
+  "future_outcomes_usage": "replay_only",
+  "guardrails": [
+    "no order changes",
+    "no account changes",
+    "no auto trading changes",
+    "no yj_bot changes",
+    "no Discord URL or secret exposure",
+    "current-day BellGuard files contain no D+1 to D+5 outcome columns"
+  ],
+  "coverage": {
+    "daily": {
+      "path": "C:\\Coding\\data\\market\\daily_ohlcv",
+      "file_count": 2883,
+      "row_count": 5619953,
+      "read_failures": 0,
+      "min_date": "2006-11-20",
+      "max_date": "2026-05-15",
+      "files_latest_ge_target": 2863,
+      "target_date": "2026-05-15"
+    },
+    "minute": {
+      "path": "C:\\Coding\\data\\market\\minute_ohlcv",
+      "file_count": 2688,
+      "row_count": 167989296,
+      "read_failures": 0,
+      "min_date": "2025-04-01",
+      "max_date": "2026-05-15",
+      "files_latest_ge_target": 2529,
+      "target_date": "2026-05-15"
+    }
+  },
+  "dataset_name": "bellguard_1y",
+  "main_version": "NEW_D0_1500_HYBRID_TOP3",
+  "display_name": "벨가드 안정후보",
+  "selection_policy": "D0 15:00 risk-filtered BellGuard Top3",
+  "lookahead_safe": true,
+  "contains_future_outcomes": true,
+  "contains_future_outcomes_note": "1년 replay files contain D+1~D+5 outcomes. bellguard_top3_latest does not.",
+  "rows": 759,
+  "date_count": 253,
+  "latest_candidate_date": "2026-05-15",
+  "latest_top3_rows": 3,
+  "latest_candidate_pool_rows": 37,
+  "latest_required_data_ready_rows": 32,
+  "webhook_preview_forbidden_terms_found": [],
+  "files": {
+    "signal_rows": "C:\\Coding\\projects\\bell-dashboard\\data\\closingbell\\online_v2\\latest\\bellguard_1y\\bellguard_signal_rows_1y.parquet",
+    "signal_by_date": "C:\\Coding\\projects\\bell-dashboard\\data\\closingbell\\online_v2\\latest\\bellguard_1y\\bellguard_signal_by_date_1y.csv",
+    "top3_latest": "C:\\Coding\\projects\\bell-dashboard\\data\\closingbell\\online_v2\\latest\\bellguard_1y\\bellguard_top3_latest.csv",
+    "latest_all_candidates": "C:\\Coding\\projects\\bell-dashboard\\data\\closingbell\\online_v2\\latest\\bellguard_1y\\bellguard_latest_candidates_all.csv"
+  }
+}

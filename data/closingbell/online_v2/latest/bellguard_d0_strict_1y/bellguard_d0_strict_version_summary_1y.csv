@@ -1,0 +1,2 @@
+﻿version,sample_n,complete_d5_n,price_scale_anomaly_n,signal_days,d1_close_win_rate,d1_close_avg,plus3_reach_rate,minus3_reach_rate,plus3_first_rate,minus3_first_rate,green_rate,red_rate,avg_mfe,avg_mae
+D0_STRICT_3D_BELLGUARD_TOP3,768,753,0,256,0.40239043824701193,-0.2399264473353493,76.36122177954847,76.75962815405046,50.46480743691899,48.60557768924303,0.140625,0.09765625,12.55818605763326,-7.76248819246624

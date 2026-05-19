@@ -1,0 +1,59 @@
+{
+  "dataset_name": "bellguard_d0_strict_1y",
+  "generated_at": "2026-05-19T19:03:49",
+  "generator": "C:\\Coding\\projects\\bell-data\\scripts\\build_bellguard_d0_strict_dashboard_20260517.py",
+  "selection_policy": "active_d0_3d_pool -> classic D0 filter -> signal-date BellGuard score -> Top3",
+  "score_model_version": "BELLGUARD_SIGNAL_CONTEXT_V1_20260519",
+  "score_basis": "signal-date 15:00 price, return, volume, turnover, D0 position, D0 gain retention, RSI, and liquidity",
+  "legacy_d0_score_preserved": true,
+  "webhook_data_guard": {
+    "policy": "exclude candidates before Top3 when signal_date minute data is insufficient",
+    "required_signal_minute_rows_min": 300,
+    "requires_entry_at_or_before": "15:00",
+    "note": "Backdata can be regenerated after repair, but live webhook candidates must be excluded/held when data is insufficient at send time."
+  },
+  "d0_filter": {
+    "common_stock": "inherited from source D0 pool",
+    "price_min": 2000,
+    "price_max": 100000,
+    "volume_min": 10000000,
+    "pct_change": "> 0"
+  },
+  "source_manifest": {
+    "canonical_d0_pool": "C:\\Coding\\data\\closingbell\\backtests\\one_year_non_ai_20260514_d0_classic_252d_for_v2\\d0_pool_1y.csv",
+    "canonical_max_d0_date": "2026-05-13",
+    "extra_stage_3d_sources": [
+      "C:\\Coding\\data\\closingbell\\backtests\\one_year_non_ai_backtest_1d_for_preclose_20260514_142906\\stage_3d\\d0_pool_1y.csv",
+      "C:\\Coding\\data\\closingbell\\backtests\\one_year_non_ai_backtest_1d_for_preclose_20260515_142906\\stage_3d\\d0_pool_1y.csv",
+      "C:\\Coding\\data\\closingbell\\backtests\\one_year_non_ai_backtest_1d_for_preclose_20260518_142927\\stage_3d\\d0_pool_1y.csv",
+      "C:\\Coding\\data\\closingbell\\backtests\\one_year_non_ai_backtest_1d_for_preclose_20260519_142842\\stage_3d\\d0_pool_1y.csv"
+    ],
+    "extra_event_rows": 49,
+    "event_rows": 3209,
+    "event_days": 256,
+    "event_min_d0_date": "2025-04-29",
+    "event_max_d0_date": "2026-05-19"
+  },
+  "rows": 768,
+  "date_count": 256,
+  "latest_signal_date": "2026-05-19",
+  "latest_top3_rows": 3,
+  "latest_candidate_pool_rows": 31,
+  "latest_candidate_pool_data_guard_excluded_rows": 0,
+  "lookahead_safe_in_today_files": true,
+  "contains_future_outcomes": true,
+  "contains_future_outcomes_note": "1y replay rows contain D+1~D+5 outcomes when locally available; top3_latest excludes future result columns.",
+  "webhook_ready": true,
+  "operational_webhook_changed": true,
+  "operational_webhook_task": "ClosingBell_Webhook_Preclose_1415",
+  "operational_webhook_script": "C:\\Coding\\projects\\bell-webhook\\scripts\\run_preclose_bellguard_webhook.ps1",
+  "files": {
+    "bellguard_d0_strict_signal_rows_1y.csv": "bellguard_d0_strict_signal_rows_1y.csv",
+    "bellguard_d0_strict_signal_by_date_1y.csv": "bellguard_d0_strict_signal_by_date_1y.csv",
+    "bellguard_d0_strict_signal_day_summary_1y.csv": "bellguard_d0_strict_signal_day_summary_1y.csv",
+    "bellguard_d0_strict_version_summary_1y.csv": "bellguard_d0_strict_version_summary_1y.csv",
+    "bellguard_d0_strict_month_summary_1y.csv": "bellguard_d0_strict_month_summary_1y.csv",
+    "bellguard_d0_strict_top3_latest.csv": "bellguard_d0_strict_top3_latest.csv",
+    "bellguard_d0_strict_latest_candidates_all.csv": "bellguard_d0_strict_latest_candidates_all.csv"
+  }
+}

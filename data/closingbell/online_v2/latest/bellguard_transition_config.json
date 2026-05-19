@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-05-17T07:28:08",
+  "DASHBOARD_MAIN_MODE": "bellguard",
+  "WEBHOOK_MAIN_MODE": "dual_preview",
+  "V2_RECORD_ENABLED": true,
+  "WEBHOOK_SEND_ENABLED": false,
+  "ROLLBACK": {
+    "DASHBOARD_MAIN_MODE": "compare or v2",
+    "WEBHOOK_MAIN_MODE": "v2"
+  }
+}
