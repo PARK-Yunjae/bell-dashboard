@@ -6974,6 +6974,59 @@ def _save_security_detail_memo(code: str, date: str, key_base: str) -> None:
         st.error(f"메모 저장 실패: {exc}")
 
 
+def _signed_qty(value: float | int | None) -> str:
+    if value is None or pd.isna(value):
+        return "—"
+    try:
+        return f"{int(round(float(value))):+,}"
+    except (TypeError, ValueError):
+        return "—"
+
+
+def _count_trailing_negative(values: list[float]) -> int:
+    count = 0
+    for value in reversed(values):
+        if value < 0:
+            count += 1
+        else:
+            break
+    return count
+
+
+def _security_detail_supply_line(code: str, signal_date: str) -> str:
+    """종목상세 상단에 표시할 장후 수급 요약. 웹훅 점수에는 사용하지 않는다."""
+    inst = load_inst_trade(code)
+    if inst.empty or not signal_date:
+        return ""
+    sig = pd.to_datetime(signal_date, errors="coerce")
+    if pd.isna(sig):
+        return ""
+    recent = inst[inst["date"].le(sig)].sort_values("date").tail(10).copy()
+    if recent.empty:
+        return ""
+    foreign = pd.to_numeric(recent.get("for_daly_nettrde_qty"), errors="coerce").dropna()
+    institution = pd.to_numeric(recent.get("orgn_daly_nettrde_qty"), errors="coerce").dropna()
+    if foreign.empty and institution.empty:
+        return ""
+    parts = []
+    if not foreign.empty:
+        f_values = foreign.astype(float).tolist()
+        parts.append(
+            f"외인 10일 합계 {_signed_qty(sum(f_values))}주"
+            f" · 매도일 {sum(1 for v in f_values if v < 0)}/{len(f_values)}"
+            f" · 연속매도 {_count_trailing_negative(f_values)}일"
+        )
+    if not institution.empty:
+        i_values = institution.astype(float).tolist()
+        parts.append(
+            f"기관 10일 합계 {_signed_qty(sum(i_values))}주"
+            f" · 매도일 {sum(1 for v in i_values if v < 0)}/{len(i_values)}"
+            f" · 연속매도 {_count_trailing_negative(i_values)}일"
+        )
+    latest = str(recent["date"].max().date())
+    return " / ".join(parts) + f" · 최신 {latest} 장후 확정치(웹훅 점수 미사용)"
+
+
 def render_security_detail() -> None:
     """종목 상세 — 차트 + 기업정보 + 메모 (1차 골격).
 
@@ -7245,6 +7298,10 @@ def render_security_detail() -> None:
                 sig_extras.append(f"RSI(14) {_rsi_float:.0f}{_rsi_tag}")
     if sig_extras:
         st.markdown(f"- **신호일 지표:** {' · '.join(sig_extras)}")
+
+    supply_line = _security_detail_supply_line(code, date)
+    if supply_line:
+        st.markdown(f"- **장후 수급 참고:** {supply_line}")
 
     st.markdown("- **체크:** 15시 가격 지지 · VWAP/전고점 부근 반응 · 거래량 유지 여부")
 
