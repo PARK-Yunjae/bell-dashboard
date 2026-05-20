@@ -7063,11 +7063,16 @@ def render_security_detail() -> None:
     sel_cols = st.columns([2, 2])
     with sel_cols[0]:
         # 달력 위젯 (Streamlit 한계: 거래일만 비활성화 못 함 → 가장 가까운 거래일로 snap)
-        picked = st.date_input(
-            "신호일 (달력)",
-            value=max_d, min_value=min_d, max_value=max_d, key=calendar_key,
-            help="신호등표의 그 날(웹훅 발송일) 기준. D0 등장일은 종목별로 다를 수 있습니다 (3일 감시풀).",
-        )
+        calendar_kwargs = {
+            "label": "신호일 (달력)",
+            "min_value": min_d,
+            "max_value": max_d,
+            "key": calendar_key,
+            "help": "신호등표의 그 날(웹훅 발송일) 기준. D0 등장일은 종목별로 다를 수 있습니다 (3일 감시풀).",
+        }
+        if calendar_key not in st.session_state:
+            calendar_kwargs["value"] = max_d
+        picked = st.date_input(**calendar_kwargs)
         if picked not in set(valid_date_objs):
             picked = max((d for d in valid_date_objs if d <= picked), default=valid_date_objs[0])
             st.caption(f"⤷ 가장 가까운 거래일로 조정: **{picked}**")
@@ -7987,8 +7992,9 @@ def render_eod_active_watch_preview() -> None:
         st.markdown("#### Guard")
         guards = manifest.get("guards") or {}
         if guards:
-            guard_rows = [{"항목": k, "값": v} for k, v in guards.items()]
-            st.dataframe(pd.DataFrame(guard_rows), use_container_width=True, hide_index=True, height=260)
+            guard_rows = [{"항목": _safe_text(k), "값": _safe_text(v)} for k, v in guards.items()]
+            guard_df = pd.DataFrame(guard_rows, columns=["항목", "값"]).astype(str)
+            st.dataframe(guard_df, use_container_width=True, hide_index=True, height=260)
         st.markdown("#### Active Watchlist")
         active_cols = ["signal_date", "stock_code", "stock_name", "d0_date", "trading_day_age", "d0_pct_change", "d0_trading_value_proxy_eok", "d0_value_rank"]
         if active.empty:
