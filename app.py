@@ -6987,21 +6987,58 @@ def render_security_detail() -> None:
         unsafe_allow_html=True,
     )
     ds_dir, prefix, ds_label = _resolve_main_dataset()
-    # signal_rows 우선 (pricecap이 chart_review 미생성), fallback chart_review
+    case_frames: list[pd.DataFrame] = []
+
+    # 최신 운영 후보는 EOD-D0 Active Watch preview를 우선 병합한다.
+    # paper/review 결과가 아직 없는 당일도 종목 상세에서 바로 차트 공부할 수 있어야 한다.
+    eod_p = EOD_ACTIVE_WATCH_PREVIEW_DIR / "webhook_top3_preview.csv"
+    if eod_p.exists():
+        try:
+            eod_cases = pd.read_csv(eod_p, encoding="utf-8-sig", dtype=str).fillna("")
+            if not eod_cases.empty:
+                eod_cases = eod_cases.copy()
+                eod_cases["code"] = eod_cases.get("stock_code", "")
+                eod_cases["name"] = eod_cases.get("stock_name", "")
+                eod_cases["rank"] = eod_cases.get("webhook_rank", "")
+                eod_cases["bellguard_score"] = eod_cases.get("daily3_active_score", "")
+                eod_cases["source_score"] = eod_cases.get("daily3_active_score", "")
+                eod_cases["entry_price_1500"] = eod_cases.get("entry_1500_price", "")
+                eod_cases["entry_price_used"] = eod_cases.get("entry_1500_price", "")
+                eod_cases["signal_rsi14_1500"] = eod_cases.get("rsi14_signal_1500", "")
+                eod_cases["bellguard_reason_auto"] = eod_cases.get("badge_text", "")
+                eod_cases["traffic_light"] = "GRAY"
+                eod_cases["bellguard_live_light"] = "GRAY"
+                if "signal_trading_value_to_1500_eok" not in eod_cases.columns:
+                    price = pd.to_numeric(eod_cases.get("entry_1500_price", ""), errors="coerce")
+                    volume = pd.to_numeric(eod_cases.get("signal_volume_to_1500", ""), errors="coerce")
+                    eod_cases["signal_trading_value_to_1500_eok"] = ((price * volume) / 100_000_000).round(1)
+                case_frames.append(eod_cases)
+        except Exception as exc:  # noqa: BLE001
+            st.caption(f"최신 EOD 후보 병합 실패: {exc}")
+
+    # 1년 복기용 기록 데이터는 보조로 병합한다.
     base_p = ds_dir / f"{prefix}_signal_rows_1y.csv"
     if not base_p.exists():
         base_p = ds_dir / f"{prefix}_chart_review_cases_1y.csv"
     if not base_p.exists():
         base_p = _resolve_hybrid_data_path("bellguard_1y/bellguard_chart_review_cases_1y.csv")
-    if base_p is None or not base_p.exists():
+    if base_p is not None and base_p.exists():
+        try:
+            case_frames.append(pd.read_csv(base_p, encoding="utf-8-sig").fillna(""))
+        except Exception as exc:  # noqa: BLE001
+            st.error(f"케이스 로드 실패: {exc}")
+            return
+
+    if not case_frames:
         st.info("종목 상세 데이터가 없습니다.")
         return
-    st.caption(f"데이터셋: {ds_label}")
-    try:
-        cases = pd.read_csv(base_p, encoding="utf-8-sig")
-    except Exception as exc:  # noqa: BLE001
-        st.error(f"케이스 로드 실패: {exc}")
-        return
+
+    cases = pd.concat(case_frames, ignore_index=True, sort=False).fillna("")
+    if {"signal_date", "code"}.issubset(cases.columns):
+        cases["signal_date"] = cases["signal_date"].astype(str).str[:10]
+        cases["code"] = cases["code"].map(normalize_code)
+        cases = cases.drop_duplicates(subset=["signal_date", "code"], keep="first")
+    st.caption(f"데이터셋: 최신 EOD-D0 Active Watch + {ds_label}")
     # 신호일 필터는 signal_date(웹훅 발송일) 기준. 3일 active pool이라
     # d0_date(실제 D0 등장일)와 signal_date가 다를 수 있어, 신호등표와
     # 일관되게 보이려면 signal_date를 써야 한다 (2026-05-18 버그 수정).
@@ -7017,12 +7054,18 @@ def render_security_detail() -> None:
         return
     valid_date_objs = sorted({pd.to_datetime(d).date() for d in valid_dates})
     min_d, max_d = valid_date_objs[0], valid_date_objs[-1]
+    latest_seen_key = "sd_date_calendar_latest_seen"
+    calendar_key = "sd_date_calendar"
+    latest_iso = max_d.isoformat()
+    if st.session_state.get(latest_seen_key) != latest_iso:
+        st.session_state[calendar_key] = max_d
+        st.session_state[latest_seen_key] = latest_iso
     sel_cols = st.columns([2, 2])
     with sel_cols[0]:
         # 달력 위젯 (Streamlit 한계: 거래일만 비활성화 못 함 → 가장 가까운 거래일로 snap)
         picked = st.date_input(
             "신호일 (달력)",
-            value=max_d, min_value=min_d, max_value=max_d, key="sd_date_calendar",
+            value=max_d, min_value=min_d, max_value=max_d, key=calendar_key,
             help="신호등표의 그 날(웹훅 발송일) 기준. D0 등장일은 종목별로 다를 수 있습니다 (3일 감시풀).",
         )
         if picked not in set(valid_date_objs):
@@ -8790,42 +8833,21 @@ def render_replay_tab(
     score: pd.DataFrame | None = None,
     enriched: pd.DataFrame | None = None,
 ) -> None:
-    """복기 탭 — 신호등표 + 종목 상세 (벨가드 단독).
+    """복기 탭 — 신호등표 + 종목 상세 중심.
 
-    색깔 흐름은 신호등표와 같은 데이터(bellguard_pricecap_signal_by_date_1y)를 보므로
-    별도 sub_tab 으로 분리하지 않고 신호등표 캡션에서 통합 설명.
+    매일 보는 화면은 날짜별 신호등표와 종목 상세만 1차 탭에 노출한다.
+    사후 라벨과 Chart Learning은 내부 기록 함수/데이터로만 보존하고 화면에서는 호출하지 않는다.
     기존 render_prev_close_color_review (1개월·V2 혼합)는 호출에서 제외, 함수는 보존.
     """
-    # sub_tabs 순서: 사용자가 매일 보는 신호등표/종목 상세를 앞에 두고,
-    # 사후 학습 영역(Paper Watch / Chart Learning)은 뒤로 — 메인 흐름 방해 최소화.
-    if online:
-        sub_tabs = st.tabs(["날짜별 신호등표", "종목 상세", "Paper Watch (사후 라벨)", "Chart Learning (Step Replay)"])
-        with sub_tabs[0]:
-            render_bellguard_signal_table()
-        with sub_tabs[1]:
-            render_security_detail()
-        with sub_tabs[2]:
-            render_eod_paper_watch_tab()
-        with sub_tabs[3]:
-            render_eod_chart_learning_tab()
-        return
-
-    sub_tabs = st.tabs([
-        "날짜별 신호등표",
-        "종목 상세",
-        "Paper Watch (사후 라벨)",
-        "Chart Learning (Step Replay)",
-    ])
+    _ = (online, score, enriched)
+    sub_tabs = st.tabs(["날짜별 신호등표", "종목 상세"])
     with sub_tabs[0]:
         render_bellguard_signal_table()
     with sub_tabs[1]:
         render_security_detail()
-    with sub_tabs[2]:
-        render_eod_paper_watch_tab()
-    with sub_tabs[3]:
-        render_eod_chart_learning_tab()
     # render_prev_close_color_review / render_one_year_backdata / render_v2_hybrid_signal_board 는
-    # 함수 정의는 보존 (필요시 복원), 호출에서만 제외.
+    # render_eod_paper_watch_tab / render_eod_chart_learning_tab 과 함께 함수 정의는 보존,
+    # 호출에서만 제외.
 
 
 def render_lab_tab(*, online: bool) -> None:
