@@ -6,7 +6,7 @@ param(
     [switch]$SkipFreshnessGuard
 )
 
-# ClosingBell BellGuard online_v2 GitHub publish 자동화.
+# ClosingBell EOD-D0 Active Watch online_v2 GitHub publish 자동화.
 #
 # 사용:
 #   .\publish_online_v2_to_github.ps1                  # 환경변수 또는 기본값에 따라 자동 결정
@@ -21,7 +21,7 @@ param(
 #   1. 100MB 이상 파일 감지시 중단
 #   2. 민감 패턴(.env / secrets / discord url) 감지시 중단
 #   3. git config user.email 없으면 안내
-#   4. BellGuard D0 strict manifest 가 오늘 날짜/Top3 3개/웹훅 준비 상태일 때만 publish
+#   4. EOD-D0 Active Watch manifest 가 오늘 날짜/Top3 3개/Guard PASS 상태일 때만 publish
 
 $ErrorActionPreference = "Stop"
 $Project = "C:\Coding\projects\bell-dashboard"
@@ -48,64 +48,67 @@ if ([string]::IsNullOrWhiteSpace($gitEmail)) {
     exit 0
 }
 
-# === 안전장치 0: 오늘 BellGuard 데이터가 준비됐는지 확인 ===
+# === 안전장치 0: 오늘 EOD-D0 Active Watch 데이터가 준비됐는지 확인 ===
 if (-not $SkipFreshnessGuard) {
     $todayIso = Get-Date -Format "yyyy-MM-dd"
-    $manifestPath = Join-Path $Project "data\closingbell\online_v2\latest\bellguard_d0_strict_1y\bellguard_d0_strict_manifest.json"
+    $manifestPath = Join-Path $Project "data\closingbell\online_v2\latest\eod_d0_active_watch_preview\manifest.json"
     if (-not (Test-Path -LiteralPath $manifestPath)) {
-        Write-Host "[skip] BellGuard manifest is missing: $manifestPath" -ForegroundColor Yellow
+        Write-Host "[skip] EOD Active Watch manifest is missing: $manifestPath" -ForegroundColor Yellow
         exit 0
     }
     try {
         $manifest = Get-Content -LiteralPath $manifestPath -Encoding UTF8 | ConvertFrom-Json
     } catch {
-        Write-Host "[skip] BellGuard manifest parse failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "[skip] EOD Active Watch manifest parse failed: $($_.Exception.Message)" -ForegroundColor Yellow
         exit 0
     }
-    $latestSignalDate = [string]$manifest.latest_signal_date
-    $top3Rows = [int]$manifest.latest_top3_rows
-    $webhookReady = [bool]$manifest.webhook_ready
-    $datasetName = [string]$manifest.dataset_name
-    $generator = [string]$manifest.generator
+    $signalDate = [string]$manifest.signal_date
+    $selectedCount = [int]$manifest.selected_count
+    $guardStatus = [string]$manifest.guard_status
+    $sourceLayer = [string]$manifest.source_layer
+    $modelId = [string]$manifest.model_id
+    $watchDays = [int]$manifest.watch_days
     $selectionPolicy = [string]$manifest.selection_policy
-    $scoreModelVersion = [string]$manifest.score_model_version
-    $sourceMaxDate = ""
-    if ($manifest.source_manifest -and $manifest.source_manifest.event_max_d0_date) {
-        $sourceMaxDate = [string]$manifest.source_manifest.event_max_d0_date
-    }
-    if ($datasetName -ne "bellguard_d0_strict_1y") {
-        Write-Host "[skip] BellGuard dataset mismatch: dataset=$datasetName" -ForegroundColor Yellow
+
+    if ($sourceLayer -ne "ACTIVE_WATCHLIST") {
+        Write-Host "[skip] EOD source layer mismatch: source_layer=$sourceLayer" -ForegroundColor Yellow
         exit 0
     }
-    if (-not $generator.Contains("build_bellguard_d0_strict_dashboard_20260517.py")) {
-        Write-Host "[skip] BellGuard generator is not the operational Codex builder: generator=$generator" -ForegroundColor Yellow
+    if ($modelId -ne "EOD_D0_BASE_VALUE_TOP3") {
+        Write-Host "[skip] EOD model mismatch: model_id=$modelId" -ForegroundColor Yellow
         exit 0
     }
-    if (-not $selectionPolicy.StartsWith("active_d0_3d_pool")) {
-        Write-Host "[skip] BellGuard selection policy mismatch: policy=$selectionPolicy" -ForegroundColor Yellow
+    if ($watchDays -ne 10) {
+        Write-Host "[skip] EOD watch_days mismatch: watch_days=$watchDays" -ForegroundColor Yellow
         exit 0
     }
-    if (-not $selectionPolicy.Contains("signal-date")) {
-        Write-Host "[skip] BellGuard selection policy is not signal-context: policy=$selectionPolicy" -ForegroundColor Yellow
+    if ($selectionPolicy -ne "EOD_D0_BASE_VALUE_TOP3__WATCH10D__D0_VALUE_DESC") {
+        Write-Host "[skip] EOD selection policy mismatch: policy=$selectionPolicy" -ForegroundColor Yellow
         exit 0
     }
-    if (-not $scoreModelVersion.StartsWith("BELLGUARD_SIGNAL_CONTEXT")) {
-        Write-Host "[skip] BellGuard score model mismatch: score_model_version=$scoreModelVersion" -ForegroundColor Yellow
+    if ($signalDate -ne $todayIso) {
+        Write-Host "[skip] EOD latest date mismatch: signal_date=$signalDate today=$todayIso" -ForegroundColor Yellow
         exit 0
     }
-    if ($sourceMaxDate -and $sourceMaxDate -ne $latestSignalDate) {
-        Write-Host "[skip] BellGuard source max date mismatch: source=$sourceMaxDate latest=$latestSignalDate" -ForegroundColor Yellow
+    if ($selectedCount -ne 3 -or $guardStatus -ne "PASS") {
+        Write-Host "[skip] EOD publish guard failed: selected=$selectedCount guard=$guardStatus" -ForegroundColor Yellow
         exit 0
     }
-    if ($latestSignalDate -ne $todayIso) {
-        Write-Host "[skip] BellGuard latest date mismatch: latest=$latestSignalDate today=$todayIso" -ForegroundColor Yellow
-        exit 0
+
+    $guardReportPath = Join-Path $Project "data\closingbell\online_v2\latest\eod_d0_active_watch_preview\guard_report.json"
+    if (Test-Path -LiteralPath $guardReportPath) {
+        try {
+            $guardReport = Get-Content -LiteralPath $guardReportPath -Encoding UTF8 | ConvertFrom-Json
+            if ($guardReport.status -ne "PASS" -or -not [bool]$guardReport.d0_date_lt_signal_date_all -or -not [bool]$guardReport.entry_1500_dt_lte_1500_all) {
+                Write-Host "[skip] EOD detailed guard failed: status=$($guardReport.status) d0_lt=$($guardReport.d0_date_lt_signal_date_all) entry_lte=$($guardReport.entry_1500_dt_lte_1500_all)" -ForegroundColor Yellow
+                exit 0
+            }
+        } catch {
+            Write-Host "[skip] EOD guard_report parse failed: $($_.Exception.Message)" -ForegroundColor Yellow
+            exit 0
+        }
     }
-    if ($top3Rows -ne 3 -or -not $webhookReady) {
-        Write-Host "[skip] BellGuard publish guard failed: top3=$top3Rows webhook_ready=$webhookReady" -ForegroundColor Yellow
-        exit 0
-    }
-    Write-Host "[ok] BellGuard freshness guard passed: $latestSignalDate Top3=$top3Rows model=$scoreModelVersion" -ForegroundColor Green
+    Write-Host "[ok] EOD Active Watch freshness guard passed: $signalDate Top3=$selectedCount model=$modelId" -ForegroundColor Green
 }
 
 # === 안전장치 1: 큰 파일 감지 (100MB 이상) ===
@@ -136,33 +139,13 @@ foreach ($pat in $sensitive) {
     }
 }
 
-# === PDF 자동 재생성 (manifest KPI 기반 동적 빌더, 데이터 변경 반영) ===
+# === PDF 자동 재생성 ===
+# EOD-D0 Active Watch main route 전환 후에는 BellGuard 전용 PDF 빌더를 자동 실행하지 않는다.
 $VenvPy = "C:\Coding\projects\_venvs\closingbell-py312\Scripts\python.exe"
 if ($DryRun) {
     Write-Host "[dry-run] skipping PDF rebuild" -ForegroundColor Cyan
-} elseif (Test-Path $VenvPy) {
-    $pdfBuilders = @(
-        "scripts\build_bellguard_reach_rate_brief.py",
-        "scripts\build_bellguard_explainer_pdf.py"
-    )
-    foreach ($builder in $pdfBuilders) {
-        if (Test-Path $builder) {
-            Write-Host "[pdf] rebuilding $builder ..." -ForegroundColor Cyan
-            $tmpOut = [System.IO.Path]::GetTempFileName()
-            $tmpErr = [System.IO.Path]::GetTempFileName()
-            try {
-                $proc = Start-Process -FilePath $VenvPy -ArgumentList @($builder) -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $tmpOut -RedirectStandardError $tmpErr
-                $exitCode = $proc.ExitCode
-            } finally {
-                Remove-Item -LiteralPath $tmpOut,$tmpErr -ErrorAction SilentlyContinue
-            }
-            if ($exitCode -ne 0) {
-                Write-Host "[warn] PDF build failed: $builder (continuing)" -ForegroundColor Yellow
-            }
-        }
-    }
 } else {
-    Write-Host "[skip] venv python missing, skipping PDF rebuild" -ForegroundColor Yellow
+    Write-Host "[skip] BellGuard legacy PDF rebuild disabled for EOD main route" -ForegroundColor Yellow
 }
 
 # === publish target / dry-run ===
@@ -216,7 +199,7 @@ if ([string]::IsNullOrWhiteSpace($status)) {
 # Commit message
 if ([string]::IsNullOrWhiteSpace($Message)) {
     $today = Get-Date -Format "yyyy-MM-dd"
-    $Message = "daily: BellGuard online_v2 갱신 $today"
+    $Message = "daily: EOD Active Watch online_v2 갱신 $today"
 }
 git commit -m $Message
 Write-Host "[ok] commit complete: $Message" -ForegroundColor Green

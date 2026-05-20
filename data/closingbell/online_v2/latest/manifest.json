@@ -1,17 +1,25 @@
 {
-  "schema": "closingbell.online_bellguard.v1",
-  "generated_at": "2026-05-19T19:03:49",
-  "active_dataset": "bellguard_d0_strict_1y",
-  "active_dataset_path": "bellguard_d0_strict_1y",
-  "latest_signal_date": "2026-05-19",
-  "score_model_version": "BELLGUARD_SIGNAL_CONTEXT_V1_20260519",
-  "selection_policy": "active_d0_3d_pool -> classic D0 filter -> signal-date BellGuard score -> Top3",
-  "rows": 768,
-  "date_count": 256,
-  "latest_top3_rows": 3,
-  "latest_candidate_pool_rows": 31,
+  "schema": "closingbell.online_eod_active_watch.v1",
+  "generated_at": "2026-05-20T15:01:09",
+  "active_dataset": "eod_d0_active_watch_preview",
+  "active_dataset_path": "eod_d0_active_watch_preview",
+  "latest_signal_date": "2026-05-20",
+  "source_layer": "ACTIVE_WATCHLIST",
+  "model_id": "EOD_D0_BASE_VALUE_TOP3",
+  "watch_days": 10,
+  "selection_policy": "EOD_D0_BASE_VALUE_TOP3__WATCH10D__D0_VALUE_DESC",
+  "selected_count": 3,
+  "active_watch_count": 93,
+  "d0_storage_count_latest": 11,
+  "guard_status": "PASS",
   "webhook_ready": true,
   "paper_watch_only": true,
   "orders_enabled": false,
-  "note": "BellGuard signal-context is the active operational dataset. Legacy V2 files may exist for record/research only."
+  "account_api_enabled": false,
+  "legacy_datasets": [
+    "bellguard_d0_strict_1y",
+    "v2_record_1y",
+    "daily3_pool_preview"
+  ],
+  "note": "EOD-D0 Active Watch is the active operational 15:00 webhook route. BellGuard/V2/Daily3 are record/research comparison datasets only."
 }
