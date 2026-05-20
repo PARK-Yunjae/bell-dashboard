@@ -6790,6 +6790,55 @@ def render_bellguard_signal_table() -> None:
     데이터: bellguard_signal_by_date_1y.csv
     표시 컬럼: 날짜 / 1위 / 2위 / 3위 / 그날 판정
     """
+    eod_p = EOD_ACTIVE_WATCH_PREVIEW_DIR / "webhook_top3_preview.csv"
+    if eod_p.exists():
+        try:
+            eod = pd.read_csv(eod_p, encoding="utf-8-sig", dtype=str).fillna("")
+            if not eod.empty:
+                eod["rank_num"] = pd.to_numeric(
+                    eod.get("webhook_rank", eod.get("rank_num", "")), errors="coerce"
+                )
+                eod = eod.sort_values(["signal_date", "rank_num", "stock_code"])
+                latest_signal = str(eod["signal_date"].dropna().astype(str).max())
+                latest = eod[eod["signal_date"].astype(str) == latest_signal].copy()
+
+                def _fmt_price(v: Any) -> str:
+                    try:
+                        return f"{float(v):,.0f}원"
+                    except (TypeError, ValueError):
+                        return "—"
+
+                def _fmt_pct(v: Any) -> str:
+                    try:
+                        return f"{float(v):+.1f}%"
+                    except (TypeError, ValueError):
+                        return "—"
+
+                st.markdown("#### EOD-D0 Active Watch 최신 신호")
+                st.caption(
+                    "현재 운영 본진입니다. 장후 확정 D0 감시풀에서 오늘 15시 데이터만으로 고른 Top3입니다. "
+                    "아래 기존 BellGuard 신호등표는 비교·기록용입니다."
+                )
+                eod_rows = []
+                for _, row in latest.iterrows():
+                    eod_rows.append({
+                        "신호일": row.get("signal_date", "—"),
+                        "순위": int(row.get("rank_num")) if pd.notna(row.get("rank_num")) else row.get("webhook_rank", "—"),
+                        "종목": f"{row.get('stock_name', '')} ({row.get('stock_code', '')})",
+                        "D0": row.get("d0_date", "—"),
+                        "감시일차": f"D+{int(float(row.get('trading_day_age')))}" if str(row.get("trading_day_age", "")).strip() else "—",
+                        "15시가": _fmt_price(row.get("entry_1500_price")),
+                        "신호일 등락": _fmt_pct(row.get("signal_day_pct_change_1500")),
+                        "D0종가대비": _fmt_pct(row.get("signal_vs_d0_close_pct")),
+                        "D0고가대비": _fmt_pct(row.get("signal_vs_d0_high_pct")),
+                        "RSI": f"{float(row.get('rsi14_signal_1500')):.0f}" if str(row.get("rsi14_signal_1500", "")).strip() else "—",
+                        "상태": row.get("badge_text", "paper watch"),
+                    })
+                st.dataframe(pd.DataFrame(eod_rows), use_container_width=True, hide_index=True, height=150)
+        except Exception as exc:  # noqa: BLE001
+            st.warning(f"EOD 최신 신호 로드 실패: {exc}")
+
+    st.markdown("#### 기존 BellGuard 기록 신호등")
     ds_dir, prefix, ds_label = _resolve_main_dataset()
     base_p = ds_dir / f"{prefix}_signal_by_date_1y.csv"
     if not base_p.exists():
@@ -7171,39 +7220,45 @@ def render_security_detail() -> None:
         "entry_price_1500": entry_price,
         "d0_close": r.get("d0_close"),
     }
-    chart_tabs = st.tabs(["일봉 (MA)", "분봉 (5/15/30분)", "수급 (외인·기관·프로그램)", "재무 (DART)"])
-    with chart_tabs[0]:
-        try:
-            render_daily_chart_with_ma(code, date)
-            st.caption(
-                "MA(이동평균)는 전체 일봉 데이터로 미리 계산된 값을 현재 view 구간만 잘라서 표시합니다 "
-                "(view 시작 시점에서 다시 계산하지 않음)."
+    # 탭 클릭 없이 위에서부터 한눈에 — 일봉/분봉은 항상 펼침, 수급·재무는 expander로 접어둠 (선택적 펼침).
+    # 일봉 (MA)
+    st.markdown("##### 📈 일봉 (MA)")
+    try:
+        render_daily_chart_with_ma(code, date)
+        st.caption(
+            "MA(이동평균)는 전체 일봉 데이터로 미리 계산된 값을 현재 view 구간만 잘라서 표시합니다."
+        )
+    except Exception as exc:  # noqa: BLE001
+        st.info(f"일봉 차트 표시 불가: {exc}")
+
+    # 분봉
+    st.markdown("##### ⏱ 분봉 (5/15/30분)")
+    try:
+        mdf = load_minute(code)
+        if mdf.empty:
+            st.info("로컬 분봉 parquet이 없습니다. (`data/market/minute_ohlcv/{code}.parquet`)")
+        else:
+            plot_one_year_minute_chart(
+                mdf,
+                info_dict,
+                r.to_dict(),
+                show_outcome=False,
+                key_prefix=f"sd_{code}_{date}",
             )
-        except Exception as exc:  # noqa: BLE001
-            st.info(f"일봉 차트 표시 불가: {exc}")
-    with chart_tabs[1]:
-        try:
-            mdf = load_minute(code)
-            if mdf.empty:
-                st.info("로컬 분봉 parquet이 없습니다. (`data/market/minute_ohlcv/{code}.parquet`)")
-            else:
-                plot_one_year_minute_chart(
-                    mdf,
-                    info_dict,
-                    r.to_dict(),
-                    show_outcome=False,
-                    key_prefix=f"sd_{code}_{date}",
-                )
-                st.caption("분봉은 거래일만 압축 표시되며, 휴장일/주말 공백은 자동 제거됩니다. (기간 고정: 웹훅일+D+1~D+5 전체)")
-        except Exception as exc:  # noqa: BLE001
-            st.info(f"분봉 차트 표시 불가: {exc}")
-    with chart_tabs[2]:
+            st.caption("분봉은 거래일만 압축 표시되며, 휴장일/주말 공백은 자동 제거됩니다. (기간 고정: 웹훅일+D+1~D+5 전체)")
+    except Exception as exc:  # noqa: BLE001
+        st.info(f"분봉 차트 표시 불가: {exc}")
+
+    # 수급 (외인·기관·프로그램) — 보조 정보, 접어둠 (필요 시 펼침)
+    with st.expander("💰 수급 (외인·기관·프로그램)", expanded=False):
         try:
             render_investor_flow_chart(code, date, lookback_days=40)
             render_investor_flow_table(code, date, lookback_days=22)
         except Exception as exc:  # noqa: BLE001
             st.info(f"수급 데이터 표시 불가: {exc}")
-    with chart_tabs[3]:
+
+    # 재무 (DART) — 보조 정보, 접어둠
+    with st.expander("🏢 재무 (DART) · 기업정보 · 공시", expanded=False):
         try:
             render_financials_card(
                 code,
@@ -8741,32 +8796,34 @@ def render_replay_tab(
     별도 sub_tab 으로 분리하지 않고 신호등표 캡션에서 통합 설명.
     기존 render_prev_close_color_review (1개월·V2 혼합)는 호출에서 제외, 함수는 보존.
     """
+    # sub_tabs 순서: 사용자가 매일 보는 신호등표/종목 상세를 앞에 두고,
+    # 사후 학습 영역(Paper Watch / Chart Learning)은 뒤로 — 메인 흐름 방해 최소화.
     if online:
-        sub_tabs = st.tabs(["Paper Watch (사후 라벨)", "Chart Learning (Step Replay)", "날짜별 신호등표", "종목 상세"])
+        sub_tabs = st.tabs(["날짜별 신호등표", "종목 상세", "Paper Watch (사후 라벨)", "Chart Learning (Step Replay)"])
         with sub_tabs[0]:
-            render_eod_paper_watch_tab()
-        with sub_tabs[1]:
-            render_eod_chart_learning_tab()
-        with sub_tabs[2]:
             render_bellguard_signal_table()
-        with sub_tabs[3]:
+        with sub_tabs[1]:
             render_security_detail()
+        with sub_tabs[2]:
+            render_eod_paper_watch_tab()
+        with sub_tabs[3]:
+            render_eod_chart_learning_tab()
         return
 
     sub_tabs = st.tabs([
-        "Paper Watch (사후 라벨)",
-        "Chart Learning (Step Replay)",
         "날짜별 신호등표",
         "종목 상세",
+        "Paper Watch (사후 라벨)",
+        "Chart Learning (Step Replay)",
     ])
     with sub_tabs[0]:
-        render_eod_paper_watch_tab()
-    with sub_tabs[1]:
-        render_eod_chart_learning_tab()
-    with sub_tabs[2]:
         render_bellguard_signal_table()
-    with sub_tabs[3]:
+    with sub_tabs[1]:
         render_security_detail()
+    with sub_tabs[2]:
+        render_eod_paper_watch_tab()
+    with sub_tabs[3]:
+        render_eod_chart_learning_tab()
     # render_prev_close_color_review / render_one_year_backdata / render_v2_hybrid_signal_board 는
     # 함수 정의는 보존 (필요시 복원), 호출에서만 제외.
 
