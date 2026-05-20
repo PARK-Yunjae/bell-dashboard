@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -2180,15 +2180,24 @@ def plot_one_year_minute_chart(
         if rule_lines:
             base_lines = [(p, l, "#cbd5e0", "dot") if l != signal_label else (p, l, "#111827", "dot") for p, l, _, _ in base_lines]
         for raw_pct, label, color, dash in base_lines + rule_lines:
-            width = 2.2 if dash == "dash" else 1
+            is_rule = dash == "dash"
+            is_faded = color == "#cbd5e0"  # 룰 선택 시 옅어진 base 라인
+            # 가독성 개선 (2026-05-21): 라인 굵게 + 라벨 박스화
+            width = 2.8 if is_rule else (1.0 if is_faded else 1.8)
+            font_color = "#475569" if is_faded else "white"
+            bg_color = "#f1f5f9" if is_faded else color
             fig.add_hline(
                 y=signal_price * (1 + raw_pct),
                 line_dash=dash,
                 line_color=color,
                 line_width=width,
-                annotation_text=label,
-                annotation_font_size=10,
-                annotation_font_color=color,
+                annotation_text=f"<b>{label}</b>",
+                annotation_font_size=13 if is_rule else 11,
+                annotation_font_color=font_color,
+                annotation_bgcolor=bg_color,
+                annotation_bordercolor=color,
+                annotation_borderwidth=1,
+                annotation_borderpad=3,
                 annotation_position="right",
                 row=1, col=1,
             )
@@ -3649,93 +3658,81 @@ def render_daily_chart_with_ma(code: str, signal_date: str) -> None:
 
 
 def render_investor_flow_table(code: str, signal_date: str, lookback_days: int = 22) -> None:
-    """일별 매매주체 표 (외국인/기관/프로그램 순매수). 신호일 기준 최근 N거래일."""
+    """일별 매매주체 표 (외국인/기관 순매수). 신호일 기준 최근 N거래일.
+
+    프로그램 컬럼은 데이터 커버리지가 낮아 (Codex supply_dart audit 기준 80~169개/2800+ 종목)
+    표시 가치가 작다고 판단해 제거 (사용자 2026-05-21 피드백).
+    """
     inst = load_inst_trade(code)
-    prog = load_program_per_code(code)
-    if inst.empty and prog.empty:
-        st.caption("매매주체 데이터 없음")
+    if inst.empty:
+        st.warning(
+            "외국인/기관 수급 데이터가 없습니다. "
+            "원천 미제공이거나 종목별 수집 누락일 수 있습니다."
+        )
         return
 
     signal_dt = pd.to_datetime(signal_date) if signal_date else None
-    # 신호일 기준 ±lookback (이전 lookback + 이후 5)
     if signal_dt is not None:
         end = signal_dt + pd.Timedelta(days=10)
         start = signal_dt - pd.Timedelta(days=lookback_days * 2)
-        if not inst.empty:
-            inst = inst[(inst["date"] >= start) & (inst["date"] <= end)]
-        if not prog.empty:
-            prog = prog[(prog["date"] >= start) & (prog["date"] <= end)]
+        inst = inst[(inst["date"] >= start) & (inst["date"] <= end)]
 
-    # merge by date
-    merged = pd.DataFrame()
-    if not inst.empty:
-        merged = inst[["date", "for_daly_nettrde_qty", "orgn_daly_nettrde_qty", "trde_qty", "close_pric"]].copy()
-    if not prog.empty:
-        prog_slim = prog[["date", "prm_netprps_amt"]].copy()
-        merged = merged.merge(prog_slim, on="date", how="outer") if not merged.empty else prog_slim
-
-    if merged.empty:
-        st.caption("매매주체 데이터 없음")
+    if inst.empty:
+        st.caption(
+            f"신호일 {signal_date} 기준 ±{lookback_days}거래일 범위에 수급 데이터가 없습니다. "
+            "외인/기관 데이터가 종목·기간별로 결손될 수 있습니다."
+        )
         return
 
+    merged = inst[["date", "for_daly_nettrde_qty", "orgn_daly_nettrde_qty", "trde_qty", "close_pric"]].copy()
     merged = merged.sort_values("date", ascending=False).head(lookback_days)
     out = pd.DataFrame()
     out["일자"] = merged["date"].dt.strftime("%Y-%m-%d")
     if "close_pric" in merged.columns:
         out["종가"] = merged["close_pric"].astype(str).str.replace(r"^\+", "", regex=True)
-    if "for_daly_nettrde_qty" in merged.columns:
-        out["외국인 순매수(주)"] = merged["for_daly_nettrde_qty"].apply(lambda v: f"{int(v):+,}" if pd.notna(v) else "—")
-    if "orgn_daly_nettrde_qty" in merged.columns:
-        out["기관 순매수(주)"] = merged["orgn_daly_nettrde_qty"].apply(lambda v: f"{int(v):+,}" if pd.notna(v) else "—")
-    if "prm_netprps_amt" in merged.columns:
-        out["프로그램 순매수 (참고)"] = merged["prm_netprps_amt"].apply(lambda v: _format_money_short(v) if pd.notna(v) else "—")
+    out["외국인 순매수(주)"] = merged["for_daly_nettrde_qty"].apply(lambda v: f"{int(v):+,}" if pd.notna(v) else "—")
+    out["기관 순매수(주)"] = merged["orgn_daly_nettrde_qty"].apply(lambda v: f"{int(v):+,}" if pd.notna(v) else "—")
     if "trde_qty" in merged.columns:
         out["거래량"] = merged["trde_qty"].apply(lambda v: f"{int(v):,}" if pd.notna(v) else "—")
 
-    # 표시 정책 안내 (Codex supply audit 2026-05-18 기준)
-    st.caption(
-        "표시 정책: **0** = 실제 0 (원천 행 존재) / **—** = 원천 행 없음·미제공 / "
-        "프로그램 컬럼은 과거 커버리지가 낮아 BellGuard 점수·웹훅 필수 조건에 사용되지 않습니다 (참고용)."
-    )
+    # 결손 일자 카운트
+    missing_for = int(merged["for_daly_nettrde_qty"].isna().sum())
+    missing_org = int(merged["orgn_daly_nettrde_qty"].isna().sum())
+    total = len(merged)
+    note_parts = ["표시 정책: **0** = 실제 0 / **—** = 원천 행 없음·미제공"]
+    if missing_for or missing_org:
+        note_parts.append(
+            f"표시 {total}일 중 결손: 외인 {missing_for}일 / 기관 {missing_org}일"
+        )
+    st.caption(" · ".join(note_parts))
     st.dataframe(out.reset_index(drop=True), use_container_width=True, hide_index=True, height=420)
 
 
 def render_investor_flow_chart(code: str, signal_date: str, lookback_days: int = 60) -> None:
-    """매매주체 누적/일별 라인 — 외국인/기관/프로그램 순매수 추세."""
+    """매매주체 차트 — 외국인/기관 순매수 (프로그램 제거, 사용자 2026-05-21 피드백)."""
     inst = load_inst_trade(code)
-    prog = load_program_per_code(code)
-    if inst.empty and prog.empty:
+    if inst.empty:
         return
     signal_dt = pd.to_datetime(signal_date) if signal_date else None
     if signal_dt is not None:
         end = signal_dt + pd.Timedelta(days=10)
         start = signal_dt - pd.Timedelta(days=lookback_days * 2)
-        if not inst.empty:
-            inst = inst[(inst["date"] >= start) & (inst["date"] <= end)]
-        if not prog.empty:
-            prog = prog[(prog["date"] >= start) & (prog["date"] <= end)]
-
-    if not (go and make_subplots):
+        inst = inst[(inst["date"] >= start) & (inst["date"] <= end)]
+    if inst.empty or not (go and make_subplots):
         return
     fig = go.Figure()
-    if not inst.empty:
-        fig.add_trace(go.Bar(x=inst["date"], y=inst["for_daly_nettrde_qty"], name="외국인", marker_color="#9ecbff"))
-        fig.add_trace(go.Bar(x=inst["date"], y=inst["orgn_daly_nettrde_qty"], name="기관", marker_color="#7ee0a1"))
-    if not prog.empty:
-        # 프로그램은 금액이라 다른 축이 적절하나 단순화: 별도 라인
-        fig.add_trace(go.Scatter(
-            x=prog["date"], y=prog["prm_netprps_amt"] / 10000, mode="lines",
-            name="프로그램(만원, 우축)", line={"color": "#ffd166", "width": 1.4}, yaxis="y2",
-        ))
+    fig.add_trace(go.Bar(x=inst["date"], y=inst["for_daly_nettrde_qty"], name="외국인", marker_color="#9ecbff"))
+    fig.add_trace(go.Bar(x=inst["date"], y=inst["orgn_daly_nettrde_qty"], name="기관", marker_color="#7ee0a1"))
     if signal_dt is not None:
         fig.add_shape(type="line", x0=signal_dt, x1=signal_dt, y0=0, y1=1,
                       xref="x", yref="paper", line={"color": "#ffd166", "width": 1.2, "dash": "dash"})
+        fig.add_annotation(
+            x=signal_dt, y=1, xref="x", yref="paper",
+            text="신호일", showarrow=False, yanchor="bottom",
+            font={"size": 11, "color": "#d97706"},
+        )
     _apply_light_chart_layout(fig, height=280, legend_y=1.14, top_margin=60)
-    fig.update_layout(
-        barmode="relative",
-        yaxis={"title": "주식 수"},
-        yaxis2={"title": "프로그램(만원)", "overlaying": "y", "side": "right", "showgrid": False},
-    )
+    fig.update_layout(barmode="relative", yaxis={"title": "주식 수"})
     fig.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])])
     st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
 
@@ -3761,17 +3758,21 @@ def load_recent_disclosure_30d() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def render_financials_card(stock_code: str, name: str = "", market: str = "") -> None:
+def render_financials_card(stock_code: str, name: str = "", market: str = "", signal_date: str = "") -> None:
     """기업 개요 + DART 재무 + 최근 공시 + 위험 키워드 매칭.
 
     Codex Claude handoff (2026-05-18) 권장:
     - 기업 개요(회사명/코드/시장)
-    - 최근 DART 공시 5건 + 위험 키워드(유상증자/전환사채/관리종목/상장폐지/...) 배지
-    - 기존 매출/영업이익/당기순이익 재무
+    - 신호일 시점 이전 30일 DART 공시 5건 + 위험 키워드 배지
+    - 신호일 시점 안내를 붙인 최신 수집 분기 매출/영업이익/당기순이익
 
-    PER/PBR/ROE는 현재 수집 데이터에 없어 "미수집"으로 표시.
+    2026-05-21 사용자 피드백 반영:
+    - 공시는 신호일 시점 이전 30일로 필터
+    - 재무는 현재 finstate_ts의 최신 수집 분기를 표시하되, 신호일 이후 공시 가능성을 경고
+    - PER/PBR/ROE/시가총액은 현재 수집 데이터에 없어 "미수집"으로 통일
     """
     code6 = normalize_code(stock_code)
+    sig_dt = pd.to_datetime(signal_date).date() if signal_date else None
 
     # ── 1) 기업 개요 카드
     parts = ['<div class="cb-info-card"><h4>기업 개요</h4>']
@@ -3781,20 +3782,33 @@ def render_financials_card(stock_code: str, name: str = "", market: str = "") ->
     if market:
         parts.append(f'<div class="cb-row"><span class="cb-key">시장</span><span class="cb-val">{market}</span></div>')
     parts.append(
-        '<div class="cb-key" style="font-size:0.78rem; margin-top:6px;">'
-        'PER/PBR/ROE/시가총액은 현재 수집 데이터에 없어 미표시 — 추후 보강 예정'
-        '</div></div>'
+        '<div class="cb-row" style="opacity:0.65;"><span class="cb-key">PER / PBR / ROE</span>'
+        '<span class="cb-val cb-key">미수집 (추후 보강)</span></div>'
     )
+    parts.append(
+        '<div class="cb-row" style="opacity:0.65;"><span class="cb-key">시가총액 / 상장일</span>'
+        '<span class="cb-val cb-key">미수집 (추후 보강)</span></div>'
+    )
+    parts.append('</div>')
     st.markdown("".join(parts), unsafe_allow_html=True)
 
-    # ── 2) 최근 DART 공시 (30일) + 위험 키워드 배지
+    # ── 2) DART 공시 — 신호일 시점 이전 30일 (사용자 피드백 2026-05-21)
     disc = load_recent_disclosure_30d()
-    parts = ['<div class="cb-info-card"><h4>최근 DART 공시 (30일)</h4>']
+    title_text = f"신호일 {signal_date} 이전 30일 DART 공시" if sig_dt else "최근 DART 공시 (30일)"
+    parts = [f'<div class="cb-info-card"><h4>{title_text}</h4>']
     rows = pd.DataFrame()
     if not disc.empty and "stock_code" in disc.columns:
-        rows = disc[disc["stock_code"] == code6].sort_values("rcept_dt", ascending=False).head(5)
+        sub = disc[disc["stock_code"] == code6].copy()
+        if sig_dt is not None and not sub.empty:
+            sub["_rcept_d"] = pd.to_datetime(sub["rcept_dt"], format="%Y%m%d", errors="coerce").dt.date
+            start_dt = sig_dt - timedelta(days=30)
+            sub = sub[(sub["_rcept_d"] <= sig_dt) & (sub["_rcept_d"] >= start_dt)]
+        rows = sub.sort_values("rcept_dt", ascending=False).head(5)
     if rows.empty:
-        parts.append('<div class="cb-key">최근 30일간 공시 없음 (또는 DART 데이터 미수집)</div>')
+        if sig_dt is not None:
+            parts.append(f'<div class="cb-key">신호일 {signal_date} 이전 30일간 공시 없음</div>')
+        else:
+            parts.append('<div class="cb-key">DART 공시 데이터 없음</div>')
     else:
         for _, dr in rows.iterrows():
             rcept = str(dr.get("rcept_dt", ""))
@@ -3853,7 +3867,19 @@ def render_financials_card(stock_code: str, name: str = "", market: str = "") ->
             f'<div class="cb-row"><span class="cb-key">{label_text}</span>'
             f'<span class="cb-val {cls_main}">{text}{delta_text}</span></div>'
         )
-    parts.append('<div class="cb-key" style="margin-top:6px; font-size:0.78rem;">전년 대비 증감률 표시</div>')
+    # 신호일 시점 안내 — finstate는 가장 최신 분기 기준이라 신호일 이후 발표일 수 있음
+    if sig_dt is not None:
+        parts.append(
+            '<div class="cb-key" style="margin-top:8px; font-size:0.76rem; '
+            'background:rgba(246,173,85,0.10); border-left:3px solid #f6ad55; '
+            'padding:5px 8px; border-radius:4px;">'
+            f'⚠ 표시된 재무는 가장 최신 분기 기준입니다. 신호일 {signal_date} 시점에서는 '
+            '아직 공시되지 않은 분기일 수 있으니 해석 시 주의 (시점별 분기 정확 매핑은 추후 보강 예정). '
+            '전년 대비 증감률 동시 표시.'
+            '</div>'
+        )
+    else:
+        parts.append('<div class="cb-key" style="margin-top:6px; font-size:0.78rem;">전년 대비 증감률 표시</div>')
     parts.append('</div>')
     st.markdown("".join(parts), unsafe_allow_html=True)
 
@@ -7354,21 +7380,22 @@ def render_security_detail() -> None:
     except Exception as exc:  # noqa: BLE001
         st.info(f"분봉 차트 표시 불가: {exc}")
 
-    # 수급 (외인·기관·프로그램) — 보조 정보, 접어둠 (필요 시 펼침)
-    with st.expander("💰 수급 (외인·기관·프로그램)", expanded=False):
+    # 수급 (외인·기관) — 보조 정보, 접어둠 (프로그램은 데이터 커버리지 낮아 제거)
+    with st.expander("💰 수급 (외인·기관)", expanded=False):
         try:
             render_investor_flow_chart(code, date, lookback_days=40)
             render_investor_flow_table(code, date, lookback_days=22)
         except Exception as exc:  # noqa: BLE001
             st.info(f"수급 데이터 표시 불가: {exc}")
 
-    # 재무 (DART) — 보조 정보, 접어둠
+    # 재무 (DART) — 보조 정보, 접어둠. 신호일 시점 기준으로 공시·재무 필터.
     with st.expander("🏢 재무 (DART) · 기업정보 · 공시", expanded=False):
         try:
             render_financials_card(
                 code,
                 name=str(r.get("name", "") or ""),
                 market=str(r.get("market", "") or ""),
+                signal_date=date,
             )
         except Exception as exc:  # noqa: BLE001
             st.info(f"DART 재무 표시 불가: {exc}")

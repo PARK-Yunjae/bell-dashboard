@@ -28,6 +28,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 # 경로
 HEALTH_DIR = Path(r"C:\Coding\data\closingbell\health")
 CLOSINGBELL = Path(r"C:\Coding\data\closingbell")
@@ -77,8 +79,12 @@ def fresh_age(path: Path, *, trading_day_aware: bool = True) -> tuple[bool, str]
     age_sec = (now_dt - mtime_dt).total_seconds()
     h = age_sec / 3600
     if trading_day_aware:
-        # 직전 거래일 17:00 이후에 갱신됐으면 신선 (PostClose 슬롯 기준)
-        last_td = _last_trading_day(now_dt.date())
+        # 직전 완료 거래일 17:00 이후에 갱신됐으면 신선 (PostClose 슬롯 기준).
+        # 평일 17:00 전 점검은 아직 당일 postclose 전이므로 전 거래일을 기준으로 삼는다.
+        base_day = now_dt.date()
+        if base_day.weekday() < 5 and (now_dt.hour, now_dt.minute) < (17, 0):
+            base_day -= timedelta(days=1)
+        last_td = _last_trading_day(base_day)
         threshold = datetime.combine(last_td, datetime.min.time()).replace(hour=17, minute=0)
         fresh = mtime_dt >= threshold
     else:
@@ -352,15 +358,41 @@ def check_postclose(today: str) -> dict[str, Any]:
     else:
         items.append({"check": "글로벌 지수", "status": "❌", "file": "—", "age": "없음", "ok": False})
 
-    # 6) DART 최근 갱신
-    if DART.exists():
-        latest_dart = max(DART.glob("**/*.json"), key=lambda p: p.stat().st_mtime, default=None)
-        if latest_dart:
-            ok, age = fresh_age(latest_dart)
-            items.append({"check": "DART 최근 갱신 파일", "status": status_icon(ok, warn=not ok),
-                          "file": latest_dart.name, "age": age, "ok": True})
+    # 6) DART 최근 갱신 — 회사 JSON은 정적 성격이라 freshness 근거에서 제외.
+    dart_recent = DART / "recent_30d.parquet"
+    target_ymd = today.replace("-", "")
+    if dart_recent.exists():
+        ok_age, age = fresh_age(dart_recent)
+        latest_rcept = ""
+        rows = 0
+        try:
+            df = pd.read_parquet(dart_recent, columns=["rcept_dt"])
+            rows = int(len(df))
+            if rows:
+                latest_rcept = str(df["rcept_dt"].astype(str).max())[:8]
+        except Exception as exc:  # noqa: BLE001
+            latest_rcept = f"read_error: {type(exc).__name__}"
+        date_ok = bool(latest_rcept and latest_rcept.isdigit() and latest_rcept >= target_ymd)
+        items.append({
+            "check": "DART recent_30d",
+            "status": status_icon(ok_age and date_ok, warn=not (ok_age and date_ok)),
+            "file": f"{dart_recent.name} rows={rows:,} max={latest_rcept}",
+            "age": age,
+            "ok": ok_age and date_ok,
+        })
+        overall_ok &= ok_age and date_ok
     else:
-        items.append({"check": "DART 디렉토리", "status": "⚠️", "file": "—", "age": "없음", "ok": True})
+        items.append({"check": "DART recent_30d", "status": "❌", "file": "—", "age": "없음", "ok": False})
+        overall_ok = False
+
+    dart_processed = latest_file_in(DART / "processed", "disclosure_flags_30d_asof_*.parquet")
+    if dart_processed:
+        ok, age = fresh_age(dart_processed)
+        items.append({"check": "DART processed flags", "status": status_icon(ok, warn=not ok),
+                      "file": dart_processed.name, "age": age, "ok": ok})
+        overall_ok &= ok
+    else:
+        items.append({"check": "DART processed flags", "status": "⚠️", "file": "—", "age": "없음", "ok": False})
 
     # 7) Task Scheduler
     items.append({"check": "Task: ClosingBell_Data_PostClose_1705", "status": "ℹ️",
