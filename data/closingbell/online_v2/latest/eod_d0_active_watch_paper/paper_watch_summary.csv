@@ -1,0 +1,16 @@
+﻿metric,value
+rows_total,825
+signal_days,275
+latest_signal_date,2026-05-19
+latest_rows,3
+d1_done_rows,819
+h5_done_rows,801
+h5_partial_minute_rows,9
+pending_rows,3
+d0_lt_signal_all,True
+age_min_ge_1,True
+age_max_le_watch_days,True
+rank_1_to_3_all,True
+source_layer_active_watchlist_all,True
+orders_disabled_all,True
+account_api_disabled_all,True

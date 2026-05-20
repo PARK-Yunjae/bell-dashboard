@@ -1,0 +1,30 @@
+{
+  "created_at": "2026-05-20T08:13:22",
+  "status": "ok",
+  "guard_status": "PASS",
+  "operation_touched": false,
+  "scheduler_changed": false,
+  "webhook_send": false,
+  "orders_enabled": false,
+  "account_api_enabled": false,
+  "source_detail": "C:\\Coding\\data\\closingbell\\research_index\\bell_eod_active_watch_signal_refinement_20260520\\parquet\\eod_active_watch_signal_refinement_detail.parquet",
+  "source_model_id": "EOD_D0_BASE_VALUE_TOP3_W10",
+  "model_id": "EOD_D0_BASE_VALUE_TOP3",
+  "watch_days": 10,
+  "source_layer": "ACTIVE_WATCHLIST",
+  "signal_feature_cutoff": "15:00",
+  "rows_total": 825,
+  "signal_days": 275,
+  "latest_signal_date": "2026-05-19",
+  "latest_rows": 3,
+  "d1_done_rows": 819,
+  "h5_done_rows": 801,
+  "h5_partial_minute_rows": 9,
+  "pending_rows": 3,
+  "outputs": {
+    "csv": "C:\\Coding\\data\\closingbell\\shared\\eod_d0_active_watch_paper\\paper_watch_log.csv",
+    "parquet": "C:\\Coding\\data\\closingbell\\shared\\eod_d0_active_watch_paper\\paper_watch_log.parquet",
+    "summary_csv": "C:\\Coding\\data\\closingbell\\shared\\eod_d0_active_watch_paper\\paper_watch_summary.csv",
+    "manifest": "C:\\Coding\\data\\closingbell\\shared\\eod_d0_active_watch_paper\\paper_watch_manifest.json"
+  }
+}

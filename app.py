@@ -6871,6 +6871,7 @@ def render_bellguard_signal_table() -> None:
 
 # 종목상세 메모 영구 저장 위치
 SECURITY_DETAIL_NOTES_PATH = CLOSINGBELL / "user_notes" / "security_detail_notes.csv"
+PAPER_WATCH_NOTES_PATH = CLOSINGBELL / "user_notes" / "paper_watch_user_notes.csv"
 
 
 def _save_security_detail_memo(code: str, date: str, key_base: str) -> None:
@@ -7655,6 +7656,51 @@ _PAPER_WATCH_LABEL_STYLE: dict[str, tuple[str, str]] = {
 }
 
 
+@st.cache_data(show_spinner=False)
+def load_eod_chart_learning_replay() -> pd.DataFrame:
+    """chart_learning_replay.csv 로드 (Codex retro labeling replay 825행)."""
+    d = _eod_paper_watch_dir()
+    if d is None:
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(d / "chart_learning_replay.csv", encoding="utf-8-sig", dtype=str).fillna("")
+    except Exception:  # noqa: BLE001
+        return pd.DataFrame()
+
+
+def load_eod_chart_learning_manifest() -> dict[str, Any]:
+    d = _eod_paper_watch_dir()
+    if d is None:
+        return {}
+    p = d / "chart_learning_replay_manifest.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8-sig"))
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+# chart_status 색상 매핑
+_CHART_STATUS_STYLE: dict[str, tuple[str, str, str]] = {
+    "OK": ("#dcfce7", "#166534", "정상"),
+    "PARTIAL_MINUTE": ("#ffedd5", "#9a3412", "분봉 부분 결손"),
+    "ENTRY_OR_SIGNAL_MINUTE_INSUFFICIENT": ("#fee2e2", "#991b1b", "15시 분봉 부족"),
+    "H5_PENDING": ("#f1f5f9", "#475569", "H5 대기"),
+    "PENDING_LATEST": ("#f1f5f9", "#94a3b8", "오늘 대기"),
+}
+
+
+def _chart_status_pill(status: str) -> str:
+    bg, fg, label = _CHART_STATUS_STYLE.get(
+        str(status).strip(), ("#f1f5f9", "#475569", str(status) or "—")
+    )
+    return (
+        f'<span style="background:{bg}; color:{fg}; padding:3px 10px; '
+        f'border-radius:999px; font-size:0.82rem; font-weight:600;">{label}</span>'
+    )
+
+
 def _paper_watch_label_pill(label: str) -> str:
     if not label or str(label).strip() in ("", "nan"):
         return '<span style="color:#94a3b8;">—</span>'
@@ -8017,6 +8063,52 @@ def render_eod_paper_watch_tab() -> None:
             "PENDING은 D+1/H5 결과가 아직 확정되지 않은 후보 (오늘·최신 신호일 + 휴장일 영향)."
         )
 
+    # ── retro_tags 빈도 시각화 (성공 vs 실패 후보 반복 태그)
+    with st.expander("🏷 retro_tags 빈도 — 성공·실패 후보 반복 태그", expanded=False):
+        success_mask = (
+            log["h5_label"].isin(["H5_GOOD", "H5_RISKY_WINNER"])
+            | (log["d1_label"] == "D1_PLUS1_PROTECT_SUCCESS")
+        )
+        fail_mask = (
+            log["h5_label"].isin(["H5_FAIL", "H5_DEAD"])
+            | (log["d1_label"] == "D1_FAST_FAIL")
+        )
+
+        def _retro_tag_freq(subset: pd.DataFrame, top_n: int = 15) -> pd.DataFrame:
+            all_tags: list[str] = []
+            for tags in subset.get("retro_tags", pd.Series(dtype=str)).dropna():
+                all_tags.extend([t.strip() for t in str(tags).split("|") if t.strip()])
+            if not all_tags:
+                return pd.DataFrame(columns=["태그", "N", "비율(%)"])
+            base_n = len(subset)
+            counts = pd.Series(all_tags).value_counts().head(top_n)
+            return pd.DataFrame({
+                "태그": counts.index,
+                "N": counts.values,
+                "비율(%)": [f"{c / base_n * 100:.1f}" for c in counts.values],
+            })
+
+        s_df = _retro_tag_freq(log[success_mask])
+        f_df = _retro_tag_freq(log[fail_mask])
+        cols_tag = st.columns(2)
+        with cols_tag[0]:
+            st.markdown(f"**🟢 성공 후보 (N={int(success_mask.sum())}) 반복 태그**")
+            if s_df.empty:
+                st.caption("성공 후보가 없거나 retro_tags가 비어있습니다.")
+            else:
+                st.dataframe(s_df, hide_index=True, use_container_width=True, height=420)
+        with cols_tag[1]:
+            st.markdown(f"**🔴 실패 후보 (N={int(fail_mask.sum())}) 반복 태그**")
+            if f_df.empty:
+                st.caption("실패 후보가 없거나 retro_tags가 비어있습니다.")
+            else:
+                st.dataframe(f_df, hide_index=True, use_container_width=True, height=420)
+        st.caption(
+            "성공 = H5_GOOD/H5_RISKY_WINNER 또는 D1_PLUS1_PROTECT_SUCCESS · "
+            "실패 = H5_FAIL/H5_DEAD 또는 D1_FAST_FAIL. 비율(%)은 해당 그룹 N 기준. "
+            "단순 빈도이며 인과 관계가 아님 — 패턴 가설 출발점으로만 활용."
+        )
+
     # ── 본문 표 (HTML 카드 형태로 핵심만)
     st.markdown("##### 후보 로그")
     if view.empty:
@@ -8069,9 +8161,377 @@ def render_eod_paper_watch_tab() -> None:
     if len(view) > 200:
         st.caption(f"표시 상한 200행 도달 — 전체 {len(view)}행 중 200행만 표시. 필터로 좁혀 보세요.")
 
+    # ── 사용자 메모 입력 (Codex retro labeling 핸드오프 §7.2 "사람이 직접 남길 메모 칸")
+    st.markdown("---")
+    st.markdown("##### ✏ 후보 메모 — 사후 해석 기록")
+    st.caption(
+        "특정 (신호일, 종목) 조합에 사용자가 직접 남기는 사후 해석 메모. "
+        "라벨/태그가 자동 분류해주는 것 외에 '왜 그랬는지' 가설·관찰을 자유 텍스트로 저장."
+    )
+    # 메모 대상 선택
+    note_view = view if not view.empty else log
+    options_df = note_view.head(200).copy()
+    note_cols = st.columns([2, 2, 6, 1])
+    with note_cols[0]:
+        note_date_opts = sorted(options_df["signal_date"].dropna().astype(str).unique().tolist(), reverse=True)
+        if not note_date_opts:
+            st.caption("선택 가능한 신호일이 없습니다.")
+            note_date = ""
+        else:
+            note_date = st.selectbox("신호일", note_date_opts, key="pw_note_date")
+    with note_cols[1]:
+        if note_date:
+            same_day = options_df[options_df["signal_date"].astype(str) == note_date]
+            stock_opts = [
+                f"{r['stock_name']} ({r['stock_code']})"
+                for _, r in same_day.iterrows()
+            ]
+            if not stock_opts:
+                st.caption("종목 없음")
+                note_stock_idx = None
+            else:
+                note_stock_idx = st.selectbox(
+                    "종목", options=range(len(stock_opts)),
+                    format_func=lambda i: stock_opts[i],
+                    key="pw_note_stock",
+                )
+        else:
+            note_stock_idx = None
+    # 기존 메모 로드
+    existing_note_text = ""
+    existing_notes_df = pd.DataFrame()
+    if PAPER_WATCH_NOTES_PATH.exists():
+        try:
+            existing_notes_df = pd.read_csv(PAPER_WATCH_NOTES_PATH, encoding="utf-8-sig", dtype=str).fillna("")
+        except Exception:  # noqa: BLE001
+            existing_notes_df = pd.DataFrame()
+    sel_code = ""
+    sel_name = ""
+    if note_date and note_stock_idx is not None:
+        same_day = options_df[options_df["signal_date"].astype(str) == note_date].reset_index(drop=True)
+        sel_row = same_day.iloc[note_stock_idx]
+        sel_code = str(sel_row["stock_code"])
+        sel_name = str(sel_row["stock_name"])
+        if not existing_notes_df.empty:
+            mask = (
+                (existing_notes_df["signal_date"] == note_date)
+                & (existing_notes_df["stock_code"] == sel_code)
+            )
+            if mask.any():
+                existing_note_text = str(existing_notes_df.loc[mask, "note"].iloc[-1])
+    note_text = st.text_area(
+        "메모",
+        value=existing_note_text,
+        key=f"pw_note_text_{note_date}_{sel_code}",
+        height=120,
+        placeholder="예) 15시에 거래량 유지율 13%로 낮았지만 D0 종가 부근 지지 시도, 그러나 16:00 분봉에서 추가 매도세 — 다음 비슷한 패턴 주의.",
+        label_visibility="collapsed",
+    )
+    with note_cols[3]:
+        st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
+        save_clicked = st.button("💾 저장", key="pw_note_save", use_container_width=True)
+    if save_clicked:
+        if not note_date or not sel_code:
+            st.warning("신호일·종목을 선택해주세요.")
+        elif not note_text.strip():
+            st.warning("메모 내용이 비어있습니다.")
+        else:
+            try:
+                PAPER_WATCH_NOTES_PATH.parent.mkdir(parents=True, exist_ok=True)
+                new_row = {
+                    "saved_at": datetime.now().isoformat(timespec="seconds"),
+                    "signal_date": note_date,
+                    "stock_code": sel_code,
+                    "stock_name": sel_name,
+                    "note": note_text.strip(),
+                }
+                if existing_notes_df.empty:
+                    merged = pd.DataFrame([new_row])
+                else:
+                    mask = (
+                        (existing_notes_df["signal_date"] == note_date)
+                        & (existing_notes_df["stock_code"] == sel_code)
+                    )
+                    if mask.any():
+                        for k, v in new_row.items():
+                            existing_notes_df.loc[mask, k] = v
+                        merged = existing_notes_df
+                    else:
+                        merged = pd.concat([existing_notes_df, pd.DataFrame([new_row])], ignore_index=True)
+                merged.to_csv(PAPER_WATCH_NOTES_PATH, index=False, encoding="utf-8-sig")
+                st.success(f"메모 저장 완료: {PAPER_WATCH_NOTES_PATH.name} ({note_date} {sel_name})")
+            except Exception as exc:  # noqa: BLE001
+                st.error(f"메모 저장 실패: {exc}")
+
+    # 저장된 메모 목록 expander
+    if not existing_notes_df.empty:
+        with st.expander(f"📓 저장된 메모 ({len(existing_notes_df)}건)", expanded=False):
+            st.dataframe(
+                existing_notes_df[["saved_at", "signal_date", "stock_name", "stock_code", "note"]],
+                use_container_width=True, hide_index=True, height=260,
+            )
+
     src_dir = _eod_paper_watch_dir()
     if src_dir is not None:
-        st.caption(f"데이터: `{src_dir}` · paper_watch_log.csv / paper_watch_manifest.json")
+        st.caption(
+            f"데이터: `{src_dir}` · paper_watch_log.csv / paper_watch_manifest.json · "
+            f"사용자 메모: `{PAPER_WATCH_NOTES_PATH}`"
+        )
+
+
+def render_eod_chart_learning_tab() -> None:
+    """과거순 차트 학습 Step Replay — Codex chart_learning_replay 산출 활용.
+
+    핵심 원칙:
+    - 기본 정렬 과거순 (replay_order asc)
+    - hide_outcome_default=True인 행은 결과 자동 숨김 + Step Replay 버튼으로 순차 공개
+    - PENDING_LATEST / PARTIAL_MINUTE / ENTRY_OR_SIGNAL_MINUTE_INSUFFICIENT 상태는 강조 표시
+    - D0 / 신호일 / Entry / 결과 / 사후 라벨을 시각적으로 분리
+    """
+    df = load_eod_chart_learning_replay()
+    manifest = load_eod_chart_learning_manifest()
+
+    st.markdown("### Chart Learning · 과거순 Step Replay")
+    st.caption(
+        "1년치 EOD-D0 Active Watch 후보를 과거순으로 한 명씩 펼치며 학습. "
+        "결과는 기본 숨김 — 사용자가 단계별로 공개해 \"15시 시점 데이터로 맞췄는지\" 자기 평가."
+    )
+
+    if df.empty:
+        st.info("chart_learning_replay.csv 데이터가 없습니다. Codex 산출 대기 중.")
+        return
+
+    # 숫자 변환
+    for c in ("replay_order", "rank", "trading_day_age", "entry_1500_price",
+              "signal_day_pct_change_1500", "signal_vs_d0_close_pct",
+              "signal_vs_d0_high_pct", "signal_volume_retention_vs_d0",
+              "rsi14_signal_1500", "risk_count"):
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    # ── 상단 metric
+    mcols = st.columns(5)
+    mcols[0].metric("총 후보", f"{manifest.get('replay_rows', len(df))}")
+    mcols[1].metric("최신 신호일", manifest.get("latest_signal_date") or "—")
+    mcols[2].metric("entry 가용", f"{numeric(manifest.get('entry_1500_available_rate'), 0):.1f}%")
+    mcols[3].metric("D+1 가용", f"{numeric(manifest.get('d1_outcome_available_rate'), 0):.1f}%")
+    mcols[4].metric("Status", manifest.get("overall_status") or "—")
+
+    # ── 필터/정렬
+    fcols = st.columns([1.3, 1.3, 1.3, 1.3, 1.8])
+    with fcols[0]:
+        order = st.radio("정렬", ["과거순", "최신순"], horizontal=True, key="cl_sort")
+    with fcols[1]:
+        d1_opts = ["전체"] + sorted([x for x in df["d1_label"].dropna().unique() if x])
+        d1_filter = st.selectbox("D+1 라벨", d1_opts, key="cl_d1")
+    with fcols[2]:
+        h5_opts = ["전체"] + sorted([x for x in df["h5_label"].dropna().unique() if x])
+        h5_filter = st.selectbox("H5 라벨", h5_opts, key="cl_h5")
+    with fcols[3]:
+        cs_opts = ["전체"] + sorted([x for x in df["chart_status"].dropna().unique() if x])
+        cs_filter = st.selectbox("Chart Status", cs_opts, key="cl_cs")
+    with fcols[4]:
+        name_q = st.text_input("종목 검색", key="cl_name", placeholder="이름 또는 코드")
+
+    view = df.copy()
+    if d1_filter != "전체":
+        view = view[view["d1_label"] == d1_filter]
+    if h5_filter != "전체":
+        view = view[view["h5_label"] == h5_filter]
+    if cs_filter != "전체":
+        view = view[view["chart_status"] == cs_filter]
+    if name_q:
+        q = name_q.strip()
+        view = view[
+            view["stock_name"].astype(str).str.contains(q, case=False, na=False)
+            | view["stock_code"].astype(str).str.contains(q, na=False)
+        ]
+    view = view.sort_values("replay_order", ascending=(order == "과거순")).reset_index(drop=True)
+
+    if view.empty:
+        st.info("필터에 맞는 후보가 없습니다.")
+        return
+
+    # ── 현재 후보 인덱스 (session_state)
+    idx_key = "cl_cur_idx"
+    if idx_key not in st.session_state or st.session_state[idx_key] >= len(view):
+        st.session_state[idx_key] = 0
+
+    # ── 후보 nav
+    nav_cols = st.columns([1, 4, 1])
+    with nav_cols[0]:
+        if st.button("◀ 이전", key="cl_prev", disabled=st.session_state[idx_key] == 0, use_container_width=True):
+            st.session_state[idx_key] = max(0, st.session_state[idx_key] - 1)
+    with nav_cols[2]:
+        if st.button("다음 ▶", key="cl_next", disabled=st.session_state[idx_key] >= len(view) - 1, use_container_width=True):
+            st.session_state[idx_key] = min(len(view) - 1, st.session_state[idx_key] + 1)
+    with nav_cols[1]:
+        # 후보 직접 선택 (replay_order + 종목명 + 신호일)
+        opt_labels = [
+            f"#{int(r['replay_order'])} · {r['signal_date'][:10]} · {r['stock_name']} ({r['stock_code']})"
+            for _, r in view.iterrows()
+        ]
+        new_idx = st.selectbox(
+            f"후보 ({st.session_state[idx_key] + 1} / {len(view)})",
+            options=range(len(view)),
+            format_func=lambda i: opt_labels[i],
+            index=st.session_state[idx_key],
+            key="cl_select",
+            label_visibility="collapsed",
+        )
+        if new_idx != st.session_state[idx_key]:
+            st.session_state[idx_key] = new_idx
+
+    r = view.iloc[st.session_state[idx_key]]
+    is_pending_latest = str(r.get("chart_status", "")) == "PENDING_LATEST"
+    is_data_warning = str(r.get("chart_status", "")) in (
+        "PARTIAL_MINUTE", "ENTRY_OR_SIGNAL_MINUTE_INSUFFICIENT"
+    )
+
+    # ── 헤더 영역 (분리 표시: 종목 · D0 · 신호일 · Entry)
+    st.markdown("---")
+    head_cols = st.columns([2, 2, 2, 2])
+    with head_cols[0]:
+        st.markdown(f"#### {r.get('stock_name', '')}")
+        st.caption(f"{r.get('stock_code', '')} · 후보 #{int(r.get('replay_order', 0))}")
+    with head_cols[1]:
+        st.metric("D0 등록일", str(r.get("d0_date", ""))[:10] or "—")
+        try:
+            age_int = int(r.get("trading_day_age"))
+            st.caption(f"감시 D+{age_int}")
+        except (TypeError, ValueError):
+            pass
+    with head_cols[2]:
+        st.metric("신호일", str(r.get("signal_date", ""))[:10] or "—")
+        st.caption("EOD 15시 신호 기준")
+    with head_cols[3]:
+        ep = r.get("entry_1500_price")
+        try:
+            st.metric("Entry (15시)", f"{float(ep):,.0f}원")
+        except (TypeError, ValueError):
+            st.metric("Entry (15시)", "—")
+        st.markdown(_chart_status_pill(r.get("chart_status", "")), unsafe_allow_html=True)
+
+    # 데이터 결손 경고
+    if is_data_warning:
+        miss_reason = str(r.get("minute_missing_reason", "")).strip()
+        st.warning(
+            f"⚠️ **데이터 결손 후보** — {r.get('chart_status', '')}: "
+            f"{miss_reason or '분봉 또는 결과 데이터 일부 누락'}. "
+            "이 후보의 라벨/태그는 부분 데이터 기반이므로 해석에 주의."
+        )
+
+    # ── 15시 시점 지표 (신호일 시점 데이터 — 결과 공개와 분리)
+    st.markdown("##### 15시 시점 지표 (결과 보기 전 단서)")
+    sig_cols = st.columns(6)
+    sig_pct = r.get("signal_day_pct_change_1500")
+    close_gap = r.get("signal_vs_d0_close_pct")
+    high_gap = r.get("signal_vs_d0_high_pct")
+    vol_ret = r.get("signal_volume_retention_vs_d0")
+    rsi_val = r.get("rsi14_signal_1500")
+    risk_n = r.get("risk_count")
+    sig_cols[0].metric("신호일 등락",
+                       f"{float(sig_pct):+.1f}%" if pd.notna(sig_pct) else "—")
+    sig_cols[1].metric("D0 종가대비",
+                       f"{float(close_gap):+.1f}%" if pd.notna(close_gap) else "—")
+    sig_cols[2].metric("D0 고가대비",
+                       f"{float(high_gap):+.1f}%" if pd.notna(high_gap) else "—")
+    sig_cols[3].metric("거래량 유지",
+                       f"{float(vol_ret):.0f}%" if pd.notna(vol_ret) else "—")
+    sig_cols[4].metric("RSI(14)",
+                       f"{float(rsi_val):.0f}" if pd.notna(rsi_val) else "—")
+    sig_cols[5].metric("위험 카운트",
+                       f"{int(risk_n)}" if pd.notna(risk_n) else "—")
+
+    # 위험 배지
+    badges_text = str(r.get("badges", "")).strip()
+    if badges_text and badges_text.lower() != "nan":
+        st.markdown(
+            f'<div style="margin:4px 0 12px;">{_eod_badge_pills(badges_text)}</div>',
+            unsafe_allow_html=True,
+        )
+
+    reason_text = str(r.get("selection_reason_text", "")).strip()
+    if reason_text and reason_text.lower() != "nan":
+        st.caption(f"💡 선정이유: {reason_text}")
+
+    # ── 결과 영역 (Step Replay — 사용자가 직접 공개)
+    st.markdown("---")
+    st.markdown("##### 결과 · 사후 라벨 (Step Replay)")
+    if is_pending_latest:
+        st.info(
+            "📅 **paper watch 대기** — 오늘 신호일 후보. D+1·H5 결과가 아직 확정되지 않았습니다. "
+            "결과는 D+1 영업일이 끝난 후 자동 갱신됩니다."
+        )
+    else:
+        d1_avail = str(r.get("d1_reveal_available", "True")).lower() not in ("false", "0", "no", "")
+        h5_avail = str(r.get("h5_reveal_available", "True")).lower() not in ("false", "0", "no", "")
+        reveal_key = f"cl_reveal_{int(r.get('replay_order', 0))}"
+        if reveal_key not in st.session_state:
+            st.session_state[reveal_key] = {"d1": False, "h5": False}
+
+        step_cols = st.columns([1, 1, 2])
+        with step_cols[0]:
+            if st.button(
+                "D+1 결과 공개", key=f"cl_reveal_d1_{int(r.get('replay_order', 0))}",
+                disabled=not d1_avail or st.session_state[reveal_key]["d1"],
+                use_container_width=True,
+            ):
+                st.session_state[reveal_key]["d1"] = True
+        with step_cols[1]:
+            if st.button(
+                "H5 결과 공개", key=f"cl_reveal_h5_{int(r.get('replay_order', 0))}",
+                disabled=not h5_avail or not st.session_state[reveal_key]["d1"]
+                         or st.session_state[reveal_key]["h5"],
+                use_container_width=True,
+                help="D+1 결과를 먼저 공개해야 H5 공개 가능 (Step Replay).",
+            ):
+                st.session_state[reveal_key]["h5"] = True
+        with step_cols[2]:
+            if st.button(
+                "↺ 다시 숨기기", key=f"cl_hide_{int(r.get('replay_order', 0))}",
+                use_container_width=True,
+            ):
+                st.session_state[reveal_key] = {"d1": False, "h5": False}
+
+        # D+1 공개
+        if st.session_state[reveal_key]["d1"]:
+            d1_label = str(r.get("d1_label", ""))
+            st.markdown(
+                f'**D+1 라벨**: {_paper_watch_label_pill(d1_label)}',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.caption("⬛ D+1 결과 비공개")
+
+        # H5 공개
+        if st.session_state[reveal_key]["h5"]:
+            h5_label = str(r.get("h5_label", ""))
+            st.markdown(
+                f'**H5 라벨**: {_paper_watch_label_pill(h5_label)}',
+                unsafe_allow_html=True,
+            )
+            # 사후 해석 태그 (성공/실패)
+            success_tags = str(r.get("retro_success_tags", "")).strip()
+            fail_tags = str(r.get("retro_fail_tags", "")).strip()
+            if success_tags and success_tags.lower() != "nan":
+                st.markdown(
+                    f'<div style="margin-top:8px; color:#166534;">✅ 성공 해석 태그: '
+                    f'<b>{success_tags.replace("|", " · ")}</b></div>',
+                    unsafe_allow_html=True,
+                )
+            if fail_tags and fail_tags.lower() != "nan":
+                st.markdown(
+                    f'<div style="margin-top:4px; color:#991b1b;">⚠ 실패/주의 해석 태그: '
+                    f'<b>{fail_tags.replace("|", " · ")}</b></div>',
+                    unsafe_allow_html=True,
+                )
+        elif st.session_state[reveal_key]["d1"]:
+            st.caption("⬛ H5 결과 비공개 (D+1을 본 뒤 공개 가능)")
+
+    src_dir = _eod_paper_watch_dir()
+    if src_dir is not None:
+        st.caption(f"데이터: `{src_dir}` · chart_learning_replay.csv")
 
 
 def render_daily3_pool_preview() -> None:
@@ -8282,25 +8742,30 @@ def render_replay_tab(
     기존 render_prev_close_color_review (1개월·V2 혼합)는 호출에서 제외, 함수는 보존.
     """
     if online:
-        sub_tabs = st.tabs(["Paper Watch (사후 라벨)", "날짜별 신호등표", "종목 상세"])
+        sub_tabs = st.tabs(["Paper Watch (사후 라벨)", "Chart Learning (Step Replay)", "날짜별 신호등표", "종목 상세"])
         with sub_tabs[0]:
             render_eod_paper_watch_tab()
         with sub_tabs[1]:
-            render_bellguard_signal_table()
+            render_eod_chart_learning_tab()
         with sub_tabs[2]:
+            render_bellguard_signal_table()
+        with sub_tabs[3]:
             render_security_detail()
         return
 
     sub_tabs = st.tabs([
         "Paper Watch (사후 라벨)",
+        "Chart Learning (Step Replay)",
         "날짜별 신호등표",
         "종목 상세",
     ])
     with sub_tabs[0]:
         render_eod_paper_watch_tab()
     with sub_tabs[1]:
-        render_bellguard_signal_table()
+        render_eod_chart_learning_tab()
     with sub_tabs[2]:
+        render_bellguard_signal_table()
+    with sub_tabs[3]:
         render_security_detail()
     # render_prev_close_color_review / render_one_year_backdata / render_v2_hybrid_signal_board 는
     # 함수 정의는 보존 (필요시 복원), 호출에서만 제외.
