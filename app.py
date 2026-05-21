@@ -7186,6 +7186,17 @@ def render_security_detail() -> None:
     date = str(r.get("signal_date", ""))[:10] or str(r.get("d0_date", ""))[:10]
     key_base = f"sd_memo_{code}_{date}"
 
+    # 운영 모델 + 학습 영역 안내 (Codex 핸드오프 2026-05-21 §10 필수 문구)
+    st.markdown(
+        '<div style="background:#f8fafc; border-left:3px solid #475569; padding:7px 12px; '
+        'border-radius:4px; margin:0 0 10px; font-size:0.84rem; color:#334155;">'
+        '<b>운영 모델</b>: <code>EOD_D0_BASE_VALUE_TOP3 / watch_days=10</code> · '
+        '아래 카드 중 Scorebook · Deep Pattern · Paper Watch · 학습 배지는 '
+        '<b>학습 참고용</b>이며 운영 후보 선정에는 반영되지 않습니다.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
     # 상단 카드: 기본 정보 — "D0" 라벨을 "신호일" 로 변경
     head = st.columns([2, 2, 2, 2])
     with head[0]:
@@ -7229,6 +7240,75 @@ def render_security_detail() -> None:
         elif d0_d != "—":
             st.caption(f"감시 등록일: {d0_d} (당일)")
 
+    # ──────── 카드 A · 후보 기준 (Codex 핸드오프 2026-05-21 §5.A) ────────
+    # 모델·감시 구조·날짜 분리 검증 한 줄. 미래시 의심 차단용.
+    age_int = None
+    try:
+        age_int = int(r.get("trading_day_age")) if pd.notna(r.get("trading_day_age")) else None
+    except (TypeError, ValueError):
+        age_int = None
+    model_id = str(r.get("selection_model") or r.get("model_id") or "EOD_D0_BASE_VALUE_TOP3")
+    source_layer = str(r.get("source_layer") or "ACTIVE_WATCHLIST")
+    watch_days_val = r.get("watch_days") or 10
+    d0_lt_signal = "✅" if (d0_d != "—" and sig_d != "—" and d0_d < sig_d) else (
+        "≡ 당일" if d0_d == sig_d else "⚠️"
+    )
+    st.markdown(
+        '<div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; '
+        'padding:8px 12px; margin:0 0 8px; font-size:0.84rem; color:#0c4a6e;">'
+        '<b>후보 기준</b> · '
+        f'모델 <code>{model_id}</code> · '
+        f'source <code>{source_layer}</code> · watch_days {watch_days_val} · '
+        '정렬 D0 거래대금 내림차순<br>'
+        f'이 후보: <b>d0_date</b> {d0_d} → <b>signal_date</b> {sig_d} '
+        f'(감시 D+{age_int if age_int is not None else "—"}) · '
+        f'd0 &lt; signal {d0_lt_signal} · '
+        '15시 feature는 상태/위험 확인용 (선정 점수 미포함)'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # ──────── 카드 B · D0 이벤트 (왜 감시풀에 들어왔는가) ────────
+    st.markdown("##### 🔥 D0 이벤트 — 감시풀 등록 사유")
+    d0_value_eok = r.get("d0_trading_value_proxy_eok") or r.get("d0_trading_value_eok")
+    d0_pct = r.get("d0_pct_change") or r.get("d0_ret_pct")
+    d0_vol_20d = r.get("d0_volume_vs_20d") or r.get("volume_ratio_vs_20d")
+    d0_upper = r.get("d0_upper_shadow_ratio") or r.get("upper_shadow_ratio")
+    d0_range = r.get("d0_range_pct")
+    d0_value_rank = r.get("d0_value_rank")
+    d0b = st.columns(3)
+    try:
+        d0b[0].metric("거래대금", f"{float(d0_value_eok):,.0f}억" if pd.notna(d0_value_eok) else "—")
+    except (TypeError, ValueError):
+        d0b[0].metric("거래대금", "—")
+    try:
+        d0b[1].metric("등락률", f"{float(d0_pct):+.1f}%" if pd.notna(d0_pct) else "—")
+    except (TypeError, ValueError):
+        d0b[1].metric("등락률", "—")
+    try:
+        d0b[2].metric("거래량 (20일비)", f"{float(d0_vol_20d):.1f}배" if pd.notna(d0_vol_20d) else "—")
+    except (TypeError, ValueError):
+        d0b[2].metric("거래량 (20일비)", "—")
+    # 보조 정보 한 줄
+    sub_bits = []
+    try:
+        if pd.notna(d0_upper):
+            sub_bits.append(f"윗꼬리 {float(d0_upper) * 100:.0f}%")
+    except (TypeError, ValueError):
+        pass
+    try:
+        if pd.notna(d0_range):
+            sub_bits.append(f"range {float(d0_range):.1f}%")
+    except (TypeError, ValueError):
+        pass
+    try:
+        if pd.notna(d0_value_rank):
+            sub_bits.append(f"거래대금 순위 {int(float(d0_value_rank))}위")
+    except (TypeError, ValueError):
+        pass
+    if sub_bits:
+        st.caption(" · ".join(sub_bits))
+
     # 근거 / 체크
     st.markdown("#### 근거 / 체크 포인트")
     reason = str(
@@ -7259,77 +7339,159 @@ def render_security_detail() -> None:
     )
     st.markdown(f"- **근거:** {reason_kr}")
 
-    # 신호일 15:00 기준 지표. 새 BellGuard 데이터셋 컬럼을 우선 사용하고, 구버전 데이터만 즉석 계산으로 보완한다.
-    sig_extras: list[str] = []
+    st.markdown("- **체크:** 15시 가격 지지 · VWAP/전고점 부근 반응 · 거래량 유지 여부")
+    supply_line = _security_detail_supply_line(code, date)
+    if supply_line:
+        st.markdown(f"- **장후 수급 참고:** {supply_line}")
+
+    # ──────── 카드 C · 신호일 15시 상태 (Codex 핸드오프 2026-05-21 §5.C) ────────
+    st.markdown("##### 📍 신호일 15시 상태")
     try:
         _ep_raw = r.get("entry_price_used") or r.get("entry_price_1500") or r.get("entry_price_hint") or r.get("d0_close")
         _ep_val = float(_ep_raw) if pd.notna(_ep_raw) else None
     except (TypeError, ValueError):
         _ep_val = None
     _sig_d = str(r.get("signal_date", ""))[:10]
-    if _sig_d:
-        _sig_pct = r.get("signal_day_pct_change_1500")
-        if pd.isna(_sig_pct) or str(_sig_pct).strip() == "":
-            _sig_pct = compute_signal_day_pct_change(code, _sig_d, _ep_val)
-        if _sig_pct is not None:
-            try:
-                sig_extras.append(f"신호일 15시 등락률 {float(_sig_pct):+.1f}%")
-            except (TypeError, ValueError):
-                pass
-        _signal_value_eok = r.get("signal_trading_value_to_1500_eok")
-        if pd.notna(_signal_value_eok) and str(_signal_value_eok).strip() != "":
-            try:
-                sig_extras.append(f"15시 거래대금 {float(_signal_value_eok):.0f}억")
-            except (TypeError, ValueError):
-                pass
-        _signal_volume = r.get("signal_volume_to_1500")
-        if pd.notna(_signal_volume) and str(_signal_volume).strip() != "":
-            try:
-                sig_extras.append(f"15시 거래량 {float(_signal_volume) / 10000:.0f}만주")
-            except (TypeError, ValueError):
-                pass
-        _retention = r.get("signal_volume_retention_vs_d0")
+    _sig_pct = r.get("signal_day_pct_change_1500")
+    if pd.isna(_sig_pct) or str(_sig_pct).strip() == "":
+        _sig_pct = compute_signal_day_pct_change(code, _sig_d, _ep_val) if _sig_d else None
+    _signal_value_eok = r.get("signal_trading_value_to_1500_eok")
+    _vs_d0_close = r.get("signal_vs_d0_close_pct")
+    _vs_d0_high = r.get("signal_vs_d0_high_pct")
+    _retention = r.get("signal_volume_retention_vs_d0")
+    _rsi = r.get("signal_rsi14_1500")
+    if pd.isna(_rsi) or str(_rsi).strip() == "":
+        _rsi = compute_rsi14(code, _sig_d) if _sig_d else None
+
+    def _fmt_pct(v: Any) -> str:
+        try:
+            return f"{float(v):+.1f}%" if pd.notna(v) else "—"
+        except (TypeError, ValueError):
+            return "—"
+
+    # retention: dataset에 따라 0~1 또는 0~100 — 자동 감지
+    _ret_pct: float | None = None
+    try:
         if pd.notna(_retention) and str(_retention).strip() != "":
+            _rv = float(_retention)
+            _ret_pct = _rv * 100 if _rv <= 1.5 else _rv
+    except (TypeError, ValueError):
+        _ret_pct = None
+
+    sig_cols = st.columns(6)
+    sig_cols[0].metric("15시 등락률", _fmt_pct(_sig_pct))
+    sig_cols[1].metric("D0 종가대비", _fmt_pct(_vs_d0_close))
+    sig_cols[2].metric("D0 고가대비", _fmt_pct(_vs_d0_high))
+    sig_cols[3].metric("거래량 유지", f"{_ret_pct:.0f}%" if _ret_pct is not None else "—")
+    try:
+        sig_cols[4].metric("RSI(14)", f"{float(_rsi):.0f}" if pd.notna(_rsi) else "—")
+    except (TypeError, ValueError):
+        sig_cols[4].metric("RSI(14)", "—")
+    try:
+        sig_cols[5].metric("15시 거래대금",
+                           f"{float(_signal_value_eok):.0f}억" if pd.notna(_signal_value_eok) else "—")
+    except (TypeError, ValueError):
+        sig_cols[5].metric("15시 거래대금", "—")
+
+    # 위험 배지 (즉석 판정)
+    risk_bits: list[tuple[str, str, str]] = []
+    try:
+        if pd.notna(_vs_d0_high) and float(_vs_d0_high) <= -20:
+            risk_bits.append(("D0고가 -20%↓", "#fee2e2", "#991b1b"))
+    except (TypeError, ValueError):
+        pass
+    try:
+        if pd.notna(_vs_d0_close) and float(_vs_d0_close) <= -10:
+            risk_bits.append(("D0종가 -10%↓", "#fee2e2", "#991b1b"))
+    except (TypeError, ValueError):
+        pass
+    try:
+        if pd.notna(_sig_pct) and float(_sig_pct) <= -7:
+            risk_bits.append(("신호일 약세", "#fee2e2", "#991b1b"))
+    except (TypeError, ValueError):
+        pass
+    if _ret_pct is not None and _ret_pct < 10:
+        risk_bits.append(("거래량 약화", "#ffedd5", "#9a3412"))
+    try:
+        if pd.notna(_rsi):
+            rsi_v = float(_rsi)
+            if rsi_v >= 75:
+                risk_bits.append(("RSI 과열", "#fee2e2", "#991b1b"))
+            elif rsi_v >= 70:
+                risk_bits.append(("RSI 과매수", "#ffedd5", "#9a3412"))
+            elif rsi_v <= 30:
+                risk_bits.append(("RSI 과매도", "#ffedd5", "#9a3412"))
+    except (TypeError, ValueError):
+        pass
+    if age_int is not None and age_int >= 8:
+        risk_bits.append(("오래된 D0", "#ffedd5", "#9a3412"))
+    if risk_bits:
+        pills = "".join(
+            f'<span style="background:{bg}; color:{fg}; padding:2px 9px; '
+            f'border-radius:999px; font-size:0.78rem; font-weight:600; margin-right:5px;">{lbl}</span>'
+            for lbl, bg, fg in risk_bits
+        )
+        st.markdown(f'<div style="margin:6px 0 0;">{pills}</div>', unsafe_allow_html=True)
+    st.caption("배지는 학습용·주의용이며 운영 컷이 아닙니다.")
+
+    # ──────── 카드 D · D+1 / D+5 결과 (paper_watch_log join) ────────
+    st.markdown("##### 🏁 D+1 / H5 결과")
+    try:
+        pw_log = load_eod_paper_watch_log()
+        if pw_log.empty or not _sig_d:
+            pw_row = pd.DataFrame()
+        else:
+            pw_row = pw_log[
+                (pw_log["signal_date"].astype(str).str[:10] == _sig_d)
+                & (pw_log["stock_code"].astype(str).str.zfill(6) == str(code).zfill(6))
+            ]
+    except Exception:  # noqa: BLE001
+        pw_row = pd.DataFrame()
+    if pw_row.empty:
+        st.info("Paper Watch 로그에 매칭되는 행 없음 (신호일 미수집 또는 후보 비대상).")
+    else:
+        pwr = pw_row.iloc[0].to_dict()
+        pw_status = str(pwr.get("paper_watch_status", ""))
+        is_pending = pw_status.startswith("pending")
+        if is_pending:
+            st.info("📅 D+1·H5 결과 미확정 — paper watch 대기 (신호일이 오늘이거나 D+1 영업일 미경과)")
+        d_cols = st.columns([1.2, 1.2, 1.8])
+        with d_cols[0]:
+            st.caption("D+1 라벨")
+            st.markdown(_paper_watch_label_pill(str(pwr.get("d1_label", "D1_PENDING"))), unsafe_allow_html=True)
             try:
-                sig_extras.append(f"D0거래량대비 {float(_retention) * 100:.0f}%")
+                d1_ret = pwr.get("d1_close_return_pct")
+                if pd.notna(d1_ret) and str(d1_ret).strip():
+                    st.caption(f"D+1 종가 {float(d1_ret):+.2f}%")
             except (TypeError, ValueError):
                 pass
-        _vs_d0_close = r.get("signal_vs_d0_close_pct")
-        if pd.notna(_vs_d0_close) and str(_vs_d0_close).strip() != "":
+        with d_cols[1]:
+            st.caption("H5 라벨")
+            st.markdown(_paper_watch_label_pill(str(pwr.get("h5_label", "H5_PENDING"))), unsafe_allow_html=True)
             try:
-                sig_extras.append(f"D0종가대비 {float(_vs_d0_close):+.1f}%")
+                h5_mfe = pwr.get("h5_mfe")
+                h5_mae = pwr.get("h5_mae")
+                parts_h5 = []
+                if pd.notna(h5_mfe):
+                    parts_h5.append(f"MFE {float(h5_mfe):+.1f}%")
+                if pd.notna(h5_mae):
+                    parts_h5.append(f"MAE {float(h5_mae):+.1f}%")
+                if parts_h5:
+                    st.caption(" / ".join(parts_h5))
             except (TypeError, ValueError):
                 pass
-        _vs_d0_high = r.get("signal_vs_d0_high_pct")
-        if pd.notna(_vs_d0_high) and str(_vs_d0_high).strip() != "":
-            try:
-                sig_extras.append(f"D0고가대비 {float(_vs_d0_high):+.1f}%")
-            except (TypeError, ValueError):
-                pass
-        _rsi = r.get("signal_rsi14_1500")
-        if pd.isna(_rsi) or str(_rsi).strip() == "":
-            _rsi = compute_rsi14(code, _sig_d)
-        if _rsi is not None:
-            try:
-                _rsi_float = float(_rsi)
-            except (TypeError, ValueError):
-                _rsi_float = None
-            if _rsi_float is not None and _rsi_float >= 70:
-                _rsi_tag = " (과매수)"
-            elif _rsi_float is not None and _rsi_float <= 30:
-                _rsi_tag = " (과매도)"
+        with d_cols[2]:
+            st.caption("해석 태그 (retro_tags)")
+            retro = str(pwr.get("retro_tags", "")).strip()
+            if retro and retro.lower() != "nan":
+                st.markdown(
+                    f'<div style="font-size:0.82rem; color:#475569; line-height:1.5;">'
+                    f'{retro.replace("|", " · ")}</div>',
+                    unsafe_allow_html=True,
+                )
             else:
-                _rsi_tag = ""
-            if _rsi_float is not None:
-                sig_extras.append(f"RSI(14) {_rsi_float:.0f}{_rsi_tag}")
-    if sig_extras:
-        st.markdown(f"- **신호일 지표:** {' · '.join(sig_extras)}")
-
-    supply_line = _security_detail_supply_line(code, date)
-    if supply_line:
-        st.markdown(f"- **장후 수급 참고:** {supply_line}")
-
-    st.markdown("- **체크:** 15시 가격 지지 · VWAP/전고점 부근 반응 · 거래량 유지 여부")
+                st.caption("—")
+        st.caption("D+1·H5 결과는 사후 평가·해석 메모용. 후보 선정 점수에 반영 금지 (미래시 방지).")
 
     # ──────── ① 차트·수급·재무 (위로 이동, 사용자 피드백 반영) ────────
     st.markdown("---")

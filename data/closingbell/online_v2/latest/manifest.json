@@ -1,9 +1,9 @@
 {
   "schema": "closingbell.online_eod_active_watch.v1",
-  "generated_at": "2026-05-20T15:01:09",
+  "generated_at": "2026-05-21T15:01:12",
   "active_dataset": "eod_d0_active_watch_preview",
   "active_dataset_path": "eod_d0_active_watch_preview",
-  "latest_signal_date": "2026-05-20",
+  "latest_signal_date": "2026-05-21",
   "source_layer": "ACTIVE_WATCHLIST",
   "model_id": "EOD_D0_BASE_VALUE_TOP3",
   "watch_days": 10,
