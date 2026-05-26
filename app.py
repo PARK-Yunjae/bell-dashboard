@@ -105,6 +105,7 @@ _ENV_ONLINE_V2 = CLOSINGBELL / "online_v2" / "latest"
 ONLINE_V2_DIR = _REPO_BUNDLED_ONLINE_V2 if _REPO_BUNDLED_ONLINE_V2.exists() else _ENV_ONLINE_V2
 DAILY3_POOL_PREVIEW_DIR = ONLINE_V2_DIR / "daily3_pool_preview"
 EOD_ACTIVE_WATCH_PREVIEW_DIR = ONLINE_V2_DIR / "eod_d0_active_watch_preview"
+EOD_ACTIVE_WATCH_1Y_DIR = ONLINE_V2_DIR / "eod_d0_active_watch_1y"
 # Paper Watch 사후 라벨링 데이터 — Codex retro labeling 산출 (2026-05-20)
 # online 사본 우선, 없으면 shared 원본 fallback (publish 시 동기화될 예정)
 EOD_PAPER_WATCH_DIRS: list[Path] = [
@@ -966,6 +967,8 @@ def load_finstate(corp_code: str) -> dict[str, Any]:
         "ifrs-full_Revenue": "매출액",
         "dart_OperatingIncomeLoss": "영업이익",
         "ifrs-full_ProfitLoss": "당기순이익",
+        "ifrs-full_BasicEarningsLossPerShare": "기본 EPS",
+        "ifrs-full_DilutedEarningsLossPerShare": "희석 EPS",
     }
     out: dict[str, Any] = {"_year": data.get("year", ""), "_fs_div": data.get("fs_div", "")}
     for item in data.get("accounts", []):
@@ -3473,16 +3476,53 @@ def render_right_note_panel(
 
 
 def _format_money_short(value: Any, default: str = "—") -> str:
-    """원 단위 금액 → '+1,234억' 또는 '-567만' 형식."""
+    """원 단위 금액 → '+1.2조', '+1,234억', '-567만' 형식."""
     n = numeric(value)
     if n is None:
         return default
     abs_n = abs(n)
+    if abs_n >= 1_0000_0000_0000:
+        return f"{n / 1_0000_0000_0000:+,.2f}조"
     if abs_n >= 1_0000_0000:
         return f"{n / 1_0000_0000:+,.1f}억"
     if abs_n >= 10000:
         return f"{n / 10000:+,.0f}만"
     return f"{n:+,.0f}"
+
+
+def fmt_eok_to_human(value_in_eok: Any, default: str = "—") -> str:
+    """억 단위 숫자 → '1조 4,710억' (1조 이상) 또는 '541억' (1조 미만).
+
+    Used by 종목 상세 카드 B/C 거래대금 표시.
+    """
+    try:
+        if value_in_eok is None or (isinstance(value_in_eok, float) and pd.isna(value_in_eok)):
+            return default
+        v = float(value_in_eok)
+    except (TypeError, ValueError):
+        return default
+    if v <= 0:
+        return f"{v:,.0f}억"
+    if v >= 10000:  # 1조 = 10,000억
+        jo = int(v // 10000)
+        eok = int(round(v - jo * 10000))
+        if eok == 0:
+            return f"{jo}조"
+        return f"{jo}조 {eok:,}억"
+    if v >= 100:
+        return f"{v:,.0f}억"
+    return f"{v:,.1f}억"
+
+
+def fmt_pct(value: Any, default: str = "—", sign: bool = True) -> str:
+    """% 값 → 소수점 한 자리 통일. sign=True면 +/- 부호 표시."""
+    try:
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return default
+        v = float(value)
+    except (TypeError, ValueError):
+        return default
+    return f"{v:+.1f}%" if sign else f"{v:.1f}%"
 
 
 def render_intraday_price_card(enriched_row: dict[str, Any] | None) -> None:
@@ -3846,7 +3886,7 @@ def render_financials_card(stock_code: str, name: str = "", market: str = "", si
     year = fin.get("_year", "")
     fs_div_text = "연결" if fin.get("_fs_div") == "CFS" else ("별도" if fin.get("_fs_div") == "OFS" else fin.get("_fs_div", ""))
     parts.append(f'<div class="cb-key" style="margin-bottom:8px;">{year} ({fs_div_text}) · corp {corp}</div>')
-    for label_text in ["매출액", "영업이익", "당기순이익"]:
+    for label_text in ["매출액", "영업이익", "당기순이익", "기본 EPS", "희석 EPS"]:
         if label_text not in fin:
             parts.append(
                 f'<div class="cb-row"><span class="cb-key">{label_text}</span>'
@@ -3856,7 +3896,11 @@ def render_financials_card(stock_code: str, name: str = "", market: str = "", si
         item = fin[label_text]
         this_n = numeric(item["this"])
         prev_n = numeric(item["prev"])
-        text = _format_money_short(this_n) if this_n is not None else "—"
+        # EPS는 원 단위 그대로 표시 (조/억 변환 부적절), 손익은 _format_money_short
+        if label_text in ("기본 EPS", "희석 EPS"):
+            text = f"{this_n:+,.0f}원" if this_n is not None else "—"
+        else:
+            text = _format_money_short(this_n) if this_n is not None else "—"
         cls_main = "cb-val-pos" if (this_n is not None and this_n > 0) else ("cb-val-neg" if this_n is not None and this_n < 0 else "cb-val")
         delta_text = ""
         if this_n is not None and prev_n is not None and prev_n != 0:
@@ -6726,16 +6770,34 @@ def _resolve_hybrid_data_path(name: str) -> Path | None:
 
 
 def _resolve_main_dataset() -> tuple[Path, str, str]:
-    """메인 BellGuard 데이터셋 자동 선택.
+    """메인 1년치 복기 데이터셋 자동 선택.
 
     우선순위:
-        1. bellguard_d0_strict_1y (active D0 3일 풀 + D0 필터 + 신호일 BellGuard)
-        2. bellguard_pricecap_1y (D0 Strict + 가격필터)
-        3. bellguard_1y (legacy Mixed, COLOR_EDGE 섞임 - 수치 신뢰 X)
+        1. eod_d0_active_watch_1y (EOD Active Watch + D1 15:00 +1.3 신호등)
+        2. bellguard_d0_strict_1y (기록/비교용)
+        3. bellguard_pricecap_1y (기록/비교용)
+        4. bellguard_1y (legacy Mixed, COLOR_EDGE 섞임 - 수치 신뢰 X)
 
     Returns:
         (dataset_dir, file_prefix, display_label)
     """
+    eod = EOD_ACTIVE_WATCH_1Y_DIR
+    if eod.exists() and (eod / "eod_d0_active_watch_top3_latest.csv").exists():
+        return eod, "eod_d0_active_watch", "Bell Watch EOD 1년치 (D1 15:00 +1.3%)"
+    strict = ONLINE_V2_DIR / "bellguard_d0_strict_1y"
+    if strict.exists() and (strict / "bellguard_d0_strict_top3_latest.csv").exists():
+        return strict, "bellguard_d0_strict", "벨가드 안정후보 (D0 3일 풀 + 신호일 점수)"
+    pc = ONLINE_V2_DIR / "bellguard_pricecap_1y"
+    if pc.exists() and (pc / "bellguard_pricecap_top3_latest.csv").exists():
+        return pc, "bellguard_pricecap", "벨가드 안정후보 (D0 Strict + 가격필터 100k)"
+    bg = ONLINE_V2_DIR / "bellguard_1y"
+    if bg.exists():
+        return bg, "bellguard", "벨가드 안정후보 (legacy - 수치 검증 중)"
+    return ONLINE_V2_DIR, "bellguard", "데이터 없음"
+
+
+def _resolve_legacy_bellguard_dataset() -> tuple[Path, str, str]:
+    """Bell Watch 이전 BellGuard 기록용 데이터셋 선택."""
     strict = ONLINE_V2_DIR / "bellguard_d0_strict_1y"
     if strict.exists() and (strict / "bellguard_d0_strict_top3_latest.csv").exists():
         return strict, "bellguard_d0_strict", "벨가드 안정후보 (D0 3일 풀 + 신호일 점수)"
@@ -6840,10 +6902,10 @@ def render_bellguard_signal_table() -> None:
                     except (TypeError, ValueError):
                         return "—"
 
-                st.markdown("#### EOD-D0 Active Watch 최신 신호")
+                st.markdown("#### 🔔 Bell Watch — 최신 신호 (Top3)")
                 st.caption(
                     "현재 운영 본진입니다. 장후 확정 D0 감시풀에서 오늘 15시 데이터만으로 고른 Top3입니다. "
-                    "아래 기존 BellGuard 신호등표는 비교·기록용입니다."
+                    "아래 기존 BellGuard 신호등표는 비교·기록용으로 접혀 있습니다."
                 )
                 eod_rows = []
                 for _, row in latest.iterrows():
@@ -6861,11 +6923,77 @@ def render_bellguard_signal_table() -> None:
                         "상태": row.get("badge_text", "paper watch"),
                     })
                 st.dataframe(pd.DataFrame(eod_rows), use_container_width=True, hide_index=True, height=150)
-        except Exception as exc:  # noqa: BLE001
-            st.warning(f"EOD 최신 신호 로드 실패: {exc}")
 
-    st.markdown("#### 기존 BellGuard 기록 신호등")
-    ds_dir, prefix, ds_label = _resolve_main_dataset()
+                # ───── Bell Watch 신호등표 (EOD +1.3 / D1 15:00) ─────
+                st.markdown("##### 🚦 Bell Watch EOD 신호등표 — D1 15:00 +1.3%")
+                eod_1y = load_eod_active_watch_1y_csv("eod_d0_active_watch_signal_by_date_1y.csv")
+                eod_1y_manifest = load_eod_active_watch_1y_manifest()
+                if not eod_1y.empty:
+                    show_cols = [
+                        c
+                        for c in [
+                            "signal_date",
+                            "1위",
+                            "2위",
+                            "3위",
+                            "plus_touch_count",
+                            "profit_before_minus2_count",
+                            "red_count",
+                            "traffic_preference_bucket",
+                        ]
+                        if c in eod_1y.columns
+                    ]
+                    by_date = eod_1y[show_cols].copy().head(60)
+                    latest_label_date = by_date["signal_date"].iloc[0] if not by_date.empty else "—"
+                    st.caption(
+                        "기준: EOD_D0_BASE_VALUE_TOP3 / watch_days=10 / D1 15:00까지 +1.3% 도달. "
+                        "🟢 +1.3 도달·-2% 없음 · 🟡 +1.3 먼저 후 변동 · 🟠 -2% 먼저 후 회복 · "
+                        "🔴 +1.3 기회 없음/빠른 실패 · ⚪ 평가 보류. "
+                        f"확정 구간: {eod_1y_manifest.get('date_min', '—')}~{eod_1y_manifest.get('date_max', '—')} · "
+                        f"마지막 라벨 신호일: **{latest_label_date}**"
+                    )
+                    st.dataframe(by_date, use_container_width=True, hide_index=True, height=360)
+                else:
+                    pw_log = load_eod_paper_watch_log()
+                    if pw_log.empty:
+                        st.info("EOD +1.3 신호등 데이터가 없습니다. export_eod_1p3_dashboard_backdata 스크립트 실행이 필요합니다.")
+                    else:
+                        df_p = pw_log.copy()
+                        df_p["rank_n"] = pd.to_numeric(df_p["rank"], errors="coerce")
+                        df_p = df_p.dropna(subset=["rank_n"])
+                        df_p["rank_n"] = df_p["rank_n"].astype(int)
+                        df_p["sd"] = df_p["signal_date"].astype(str).str[:10]
+                        df_p["cell"] = df_p.apply(
+                            lambda r: f"{_d1_label_to_light(r.get('d1_label', ''))} {r.get('stock_name', '')}({r.get('stock_code', '')})",
+                            axis=1,
+                        )
+                        by_date = (
+                            df_p.pivot_table(
+                                index="sd",
+                                columns="rank_n",
+                                values="cell",
+                                aggfunc="first",
+                            )
+                            .sort_index(ascending=False)
+                            .head(60)
+                        )
+                        by_date.columns = [f"{int(c)}위" for c in by_date.columns]
+                        by_date.index.name = "signal_date"
+                        by_date = by_date.reset_index()
+                        st.caption("임시 fallback: 기존 paper_watch_log 라벨입니다. +1.3 전용 EOD 신호등 산출물이 없을 때만 표시됩니다.")
+                        st.dataframe(by_date, use_container_width=True, hide_index=True, height=360)
+        except Exception as exc:  # noqa: BLE001
+            st.warning(f"Bell Watch 최신 신호 로드 실패: {exc}")
+
+    # ───── 기존 BellGuard 표는 expander로 접어둠 (비교·기록용) ─────
+    with st.expander("📁 기존 BellGuard 기록 신호등 (비교·기록용 · 본진 아님)", expanded=False):
+        st.caption("Bell Watch 본진 전환 이전 BellGuard 안정후보 신호등표입니다. 운영 후보 선정에는 반영되지 않습니다.")
+        _render_legacy_bellguard_signal_table_body()
+
+
+def _render_legacy_bellguard_signal_table_body() -> None:
+    """기존 BellGuard 신호등표 본체 — expander 안에서 호출."""
+    ds_dir, prefix, ds_label = _resolve_legacy_bellguard_dataset()
     base_p = ds_dir / f"{prefix}_signal_by_date_1y.csv"
     if not base_p.exists():
         base_p = _resolve_hybrid_data_path("bellguard_1y/bellguard_signal_by_date_1y.csv")
@@ -7068,7 +7196,7 @@ def render_security_detail() -> None:
     ds_dir, prefix, ds_label = _resolve_main_dataset()
     case_frames: list[pd.DataFrame] = []
 
-    # 최신 운영 후보는 EOD-D0 Active Watch preview를 우선 병합한다.
+    # 최신 운영 후보는 Bell Watch preview를 우선 병합한다.
     # paper/review 결과가 아직 없는 당일도 종목 상세에서 바로 차트 공부할 수 있어야 한다.
     eod_p = EOD_ACTIVE_WATCH_PREVIEW_DIR / "webhook_top3_preview.csv"
     if eod_p.exists():
@@ -7093,7 +7221,7 @@ def render_security_detail() -> None:
                     eod_cases["signal_trading_value_to_1500_eok"] = ((price * volume) / 100_000_000).round(1)
                 case_frames.append(eod_cases)
         except Exception as exc:  # noqa: BLE001
-            st.caption(f"최신 EOD 후보 병합 실패: {exc}")
+            st.caption(f"최신 Bell Watch 후보 병합 실패: {exc}")
 
     # 1년 복기용 기록 데이터는 보조로 병합한다.
     base_p = ds_dir / f"{prefix}_signal_rows_1y.csv"
@@ -7117,7 +7245,7 @@ def render_security_detail() -> None:
         cases["signal_date"] = cases["signal_date"].astype(str).str[:10]
         cases["code"] = cases["code"].map(normalize_code)
         cases = cases.drop_duplicates(subset=["signal_date", "code"], keep="first")
-    st.caption(f"데이터셋: 최신 EOD-D0 Active Watch + {ds_label}")
+    st.caption(f"데이터셋: 최신 Bell Watch + {ds_label}")
     # 신호일 필터는 signal_date(웹훅 발송일) 기준. 3일 active pool이라
     # d0_date(실제 D0 등장일)와 signal_date가 다를 수 있어, 신호등표와
     # 일관되게 보이려면 signal_date를 써야 한다 (2026-05-18 버그 수정).
@@ -7268,84 +7396,7 @@ def render_security_detail() -> None:
         unsafe_allow_html=True,
     )
 
-    # ──────── 카드 B · D0 이벤트 (왜 감시풀에 들어왔는가) ────────
-    st.markdown("##### 🔥 D0 이벤트 — 감시풀 등록 사유")
-    d0_value_eok = r.get("d0_trading_value_proxy_eok") or r.get("d0_trading_value_eok")
-    d0_pct = r.get("d0_pct_change") or r.get("d0_ret_pct")
-    d0_vol_20d = r.get("d0_volume_vs_20d") or r.get("volume_ratio_vs_20d")
-    d0_upper = r.get("d0_upper_shadow_ratio") or r.get("upper_shadow_ratio")
-    d0_range = r.get("d0_range_pct")
-    d0_value_rank = r.get("d0_value_rank")
-    d0b = st.columns(3)
-    try:
-        d0b[0].metric("거래대금", f"{float(d0_value_eok):,.0f}억" if pd.notna(d0_value_eok) else "—")
-    except (TypeError, ValueError):
-        d0b[0].metric("거래대금", "—")
-    try:
-        d0b[1].metric("등락률", f"{float(d0_pct):+.1f}%" if pd.notna(d0_pct) else "—")
-    except (TypeError, ValueError):
-        d0b[1].metric("등락률", "—")
-    try:
-        d0b[2].metric("거래량 (20일비)", f"{float(d0_vol_20d):.1f}배" if pd.notna(d0_vol_20d) else "—")
-    except (TypeError, ValueError):
-        d0b[2].metric("거래량 (20일비)", "—")
-    # 보조 정보 한 줄
-    sub_bits = []
-    try:
-        if pd.notna(d0_upper):
-            sub_bits.append(f"윗꼬리 {float(d0_upper) * 100:.0f}%")
-    except (TypeError, ValueError):
-        pass
-    try:
-        if pd.notna(d0_range):
-            sub_bits.append(f"range {float(d0_range):.1f}%")
-    except (TypeError, ValueError):
-        pass
-    try:
-        if pd.notna(d0_value_rank):
-            sub_bits.append(f"거래대금 순위 {int(float(d0_value_rank))}위")
-    except (TypeError, ValueError):
-        pass
-    if sub_bits:
-        st.caption(" · ".join(sub_bits))
-
-    # 근거 / 체크
-    st.markdown("#### 근거 / 체크 포인트")
-    reason = str(
-        r.get("bellguard_reason_auto") or r.get("bellguard_reason")
-        or r.get("traffic_reason") or ""
-    ).strip()
-    if not reason or reason.lower() == "nan":
-        # 산출된 컬럼이 없으면 D0 등락·거래량 조합으로 자동 생성
-        bits = []
-        d0 = r.get("d0_pct_change") or r.get("d0_ret_pct")
-        if pd.notna(d0):
-            try:
-                bits.append(f"감시 등록일 {float(d0):+.1f}%")
-            except (TypeError, ValueError):
-                pass
-        vr = r.get("volume_ratio_vs_20d")
-        if pd.notna(vr):
-            try:
-                bits.append(f"거래량 20일대비 {float(vr):.1f}배")
-            except (TypeError, ValueError):
-                pass
-        reason = " / ".join(bits) if bits else "—"
-    # Codex bellguard_reason 텍스트의 영문 약어를 한글로 병기 (사용자 2026-05-19 피드백)
-    reason_kr = (
-        reason.replace("D0+", "감시 D+")
-              .replace("D0 +", "감시 등록일 +")
-              .replace("D0 -", "감시 등록일 -")
-    )
-    st.markdown(f"- **근거:** {reason_kr}")
-
-    st.markdown("- **체크:** 15시 가격 지지 · VWAP/전고점 부근 반응 · 거래량 유지 여부")
-    supply_line = _security_detail_supply_line(code, date)
-    if supply_line:
-        st.markdown(f"- **장후 수급 참고:** {supply_line}")
-
-    # ──────── 카드 C · 신호일 15시 상태 (Codex 핸드오프 2026-05-21 §5.C) ────────
-    st.markdown("##### 📍 신호일 15시 상태")
+    # ──────── 신호일 15시 변수 + 위험 배지 일괄 계산 (카드 B/C, B2 띠에서 공용) ────────
     try:
         _ep_raw = r.get("entry_price_used") or r.get("entry_price_1500") or r.get("entry_price_hint") or r.get("d0_close")
         _ep_val = float(_ep_raw) if pd.notna(_ep_raw) else None
@@ -7362,13 +7413,6 @@ def render_security_detail() -> None:
     _rsi = r.get("signal_rsi14_1500")
     if pd.isna(_rsi) or str(_rsi).strip() == "":
         _rsi = compute_rsi14(code, _sig_d) if _sig_d else None
-
-    def _fmt_pct(v: Any) -> str:
-        try:
-            return f"{float(v):+.1f}%" if pd.notna(v) else "—"
-        except (TypeError, ValueError):
-            return "—"
-
     # retention: dataset에 따라 0~1 또는 0~100 — 자동 감지
     _ret_pct: float | None = None
     try:
@@ -7378,22 +7422,7 @@ def render_security_detail() -> None:
     except (TypeError, ValueError):
         _ret_pct = None
 
-    sig_cols = st.columns(6)
-    sig_cols[0].metric("15시 등락률", _fmt_pct(_sig_pct))
-    sig_cols[1].metric("D0 종가대비", _fmt_pct(_vs_d0_close))
-    sig_cols[2].metric("D0 고가대비", _fmt_pct(_vs_d0_high))
-    sig_cols[3].metric("거래량 유지", f"{_ret_pct:.0f}%" if _ret_pct is not None else "—")
-    try:
-        sig_cols[4].metric("RSI(14)", f"{float(_rsi):.0f}" if pd.notna(_rsi) else "—")
-    except (TypeError, ValueError):
-        sig_cols[4].metric("RSI(14)", "—")
-    try:
-        sig_cols[5].metric("15시 거래대금",
-                           f"{float(_signal_value_eok):.0f}억" if pd.notna(_signal_value_eok) else "—")
-    except (TypeError, ValueError):
-        sig_cols[5].metric("15시 거래대금", "—")
-
-    # 위험 배지 (즉석 판정)
+    # 위험 배지 계산 (red = #fee2e2/#991b1b, orange = #ffedd5/#9a3412)
     risk_bits: list[tuple[str, str, str]] = []
     try:
         if pd.notna(_vs_d0_high) and float(_vs_d0_high) <= -20:
@@ -7425,6 +7454,125 @@ def render_security_detail() -> None:
         pass
     if age_int is not None and age_int >= 8:
         risk_bits.append(("오래된 D0", "#ffedd5", "#9a3412"))
+
+    # ──────── B2: 최상단 위험 배지 띠 (한눈에 위험 프로파일) ────────
+    has_red = any(bg == "#fee2e2" for _, bg, _ in risk_bits)
+    if risk_bits:
+        pills_top = "".join(
+            f'<span style="background:{bg}; color:{fg}; padding:3px 10px; '
+            f'border-radius:999px; font-size:0.80rem; font-weight:600; margin-right:6px;">{lbl}</span>'
+            for lbl, bg, fg in risk_bits
+        )
+        prefix = "🚨 위험" if has_red else "⚠ 주의"
+        st.markdown(
+            f'<div style="margin:4px 0 10px; padding:6px 10px; background:#fafafa; '
+            f'border-left:3px solid {"#dc2626" if has_red else "#f59e0b"}; '
+            f'border-radius:4px; font-size:0.84rem;">'
+            f'<b style="color:{"#991b1b" if has_red else "#9a3412"}; margin-right:8px;">{prefix}</b>'
+            f'{pills_top}</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<div style="margin:4px 0 10px; padding:6px 10px; background:#f0fdf4; '
+            'border-left:3px solid #16a34a; border-radius:4px; font-size:0.84rem;">'
+            '<b style="color:#166534;">✅ 위험 배지 없음</b> '
+            '<span style="color:#475569; margin-left:6px;">— D0 대비 큰 이탈 없음 · RSI 중립 구간</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ──────── 카드 B · D0 이벤트 (왜 감시풀에 들어왔는가) ────────
+    st.markdown("##### 🔥 D0 이벤트 — 감시풀 등록 사유")
+    d0_value_eok = r.get("d0_trading_value_proxy_eok") or r.get("d0_trading_value_eok")
+    d0_pct = r.get("d0_pct_change") or r.get("d0_ret_pct")
+    d0_vol_20d = r.get("d0_volume_vs_20d") or r.get("volume_ratio_vs_20d")
+    d0_upper = r.get("d0_upper_shadow_ratio") or r.get("upper_shadow_ratio")
+    d0_range = r.get("d0_range_pct")
+    d0_value_rank = r.get("d0_value_rank")
+    d0b = st.columns(3)
+    d0b[0].metric("D0 거래대금", fmt_eok_to_human(d0_value_eok))
+    try:
+        d0b[1].metric("D0 등락률", f"{float(d0_pct):+.1f}%" if pd.notna(d0_pct) else "—")
+    except (TypeError, ValueError):
+        d0b[1].metric("D0 등락률", "—")
+    try:
+        d0b[2].metric("거래량 vs 20일", f"{float(d0_vol_20d):.1f}배" if pd.notna(d0_vol_20d) else "—")
+    except (TypeError, ValueError):
+        d0b[2].metric("거래량 vs 20일", "—")
+    # 보조 정보 한 줄 — 윗꼬리/range/거래대금 순위
+    sub_bits = []
+    try:
+        if pd.notna(d0_upper):
+            sub_bits.append(f"윗꼬리 {float(d0_upper) * 100:.0f}%")
+    except (TypeError, ValueError):
+        pass
+    try:
+        if pd.notna(d0_range):
+            sub_bits.append(f"range {float(d0_range):.1f}%")
+    except (TypeError, ValueError):
+        pass
+    try:
+        if pd.notna(d0_value_rank):
+            sub_bits.append(f"거래대금 순위 {int(float(d0_value_rank))}위")
+    except (TypeError, ValueError):
+        pass
+
+    # B1 적용: "근거/체크/장후수급" 평문 3줄 → 카드 B의 캡션으로 흡수
+    reason = str(
+        r.get("bellguard_reason_auto") or r.get("bellguard_reason")
+        or r.get("traffic_reason") or ""
+    ).strip()
+    if not reason or reason.lower() == "nan":
+        bits = []
+        d0v = r.get("d0_pct_change") or r.get("d0_ret_pct")
+        if pd.notna(d0v):
+            try:
+                bits.append(f"감시 등록일 {float(d0v):+.1f}%")
+            except (TypeError, ValueError):
+                pass
+        vr = r.get("volume_ratio_vs_20d")
+        if pd.notna(vr):
+            try:
+                bits.append(f"거래량 20일대비 {float(vr):.1f}배")
+            except (TypeError, ValueError):
+                pass
+        reason = " / ".join(bits) if bits else ""
+    reason_kr = (
+        reason.replace("D0+", "감시 D+")
+              .replace("D0 +", "감시 등록일 +")
+              .replace("D0 -", "감시 등록일 -")
+    )
+    # 1줄째 캡션: 윗꼬리/range/순위 + 근거 텍스트
+    cap_line1_bits = list(sub_bits)
+    if reason_kr and reason_kr != "—":
+        cap_line1_bits.append(f"근거 {reason_kr}")
+    if cap_line1_bits:
+        st.caption(" · ".join(cap_line1_bits))
+    # 2줄째 캡션: 체크 포인트 + 장후 수급
+    cap_line2 = "체크: 15시 가격 지지 · VWAP/전고점 반응 · 거래량 유지"
+    supply_line = _security_detail_supply_line(code, date)
+    if supply_line:
+        cap_line2 += f"  │  장후 {supply_line}"
+    st.caption(cap_line2)
+
+    # ──────── 카드 C · 신호일 15시 상태 (Codex 핸드오프 2026-05-21 §5.C) ────────
+    # 변수와 risk_bits는 카드 A 직후 블록에서 이미 계산됨 (B2 위험 배지 띠와 공용)
+    st.markdown("##### 📍 신호일 15시 상태")
+
+    # 컬럼 비율 조정 — RSI는 좁게, 거래대금은 넓게 (조 단위 표시 시 잘림 방지)
+    sig_cols = st.columns([1.0, 1.0, 1.0, 1.0, 0.8, 1.3])
+    sig_cols[0].metric("15시 등락률", fmt_pct(_sig_pct))
+    sig_cols[1].metric("vs D0 종가", fmt_pct(_vs_d0_close))
+    sig_cols[2].metric("vs D0 고가", fmt_pct(_vs_d0_high))
+    sig_cols[3].metric("거래량 유지", f"{_ret_pct:.1f}%" if _ret_pct is not None else "—")
+    try:
+        sig_cols[4].metric("RSI", f"{float(_rsi):.1f}" if pd.notna(_rsi) else "—")
+    except (TypeError, ValueError):
+        sig_cols[4].metric("RSI", "—")
+    sig_cols[5].metric("15시 거래대금", fmt_eok_to_human(_signal_value_eok))
+
+    # 카드 C 안의 위험 배지 pill — 위에서 계산된 risk_bits 재사용 (상단 띠와 같은 정보, 자세히 보는 용도)
     if risk_bits:
         pills = "".join(
             f'<span style="background:{bg}; color:{fg}; padding:2px 9px; '
@@ -7772,7 +7920,7 @@ def render_today_hybrid_shadow() -> None:
         '</div>',
         unsafe_allow_html=True,
     )
-    # (5/19 점수 모델 전환 안내는 EOD-D0 Active Watch 본진 전환 5/20 이후 outdated가 되어 제거됨)
+    # (5/19 점수 모델 전환 안내는 Bell Watch 본진 전환 5/20 이후 outdated가 되어 제거됨)
     # 메인 데이터셋 자동 선택 (pricecap_1y > bellguard_1y)
     ds_dir, prefix, ds_label = _resolve_main_dataset()
     today_p = ds_dir / f"{prefix}_top3_latest.csv"
@@ -7955,6 +8103,33 @@ def load_eod_active_watch_manifest() -> dict[str, Any]:
         return {}
 
 
+@st.cache_data(show_spinner=False)
+def _load_eod_active_watch_1y_csv_cached(filename: str, mtime_ns: int) -> pd.DataFrame:
+    path = EOD_ACTIVE_WATCH_1Y_DIR / filename
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(path, dtype=str, encoding="utf-8-sig").fillna("")
+    except Exception:
+        return pd.DataFrame()
+
+
+def load_eod_active_watch_1y_csv(filename: str) -> pd.DataFrame:
+    path = EOD_ACTIVE_WATCH_1Y_DIR / filename
+    mtime_ns = path.stat().st_mtime_ns if path.exists() else 0
+    return _load_eod_active_watch_1y_csv_cached(filename, mtime_ns)
+
+
+def load_eod_active_watch_1y_manifest() -> dict[str, Any]:
+    path = EOD_ACTIVE_WATCH_1Y_DIR / "eod_d0_active_watch_manifest.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return {}
+
+
 def _eod_paper_watch_dir() -> Path | None:
     """Paper Watch 데이터 폴더 — online 사본 우선, 없으면 shared 원본."""
     for d in EOD_PAPER_WATCH_DIRS:
@@ -8003,6 +8178,50 @@ _PAPER_WATCH_LABEL_STYLE: dict[str, tuple[str, str]] = {
     "H5_DEAD": ("#f1f5f9", "#475569"),
     "H5_PENDING": ("#f1f5f9", "#94a3b8"),
 }
+
+
+# Bell Watch 신호등표용 — d1_label을 🟢🟡🟠🔴⚪로 매핑 (BellGuard 신호등표와 동일 색 체계)
+def _traffic_label_to_light(label: str) -> str:
+    lbl = (label or "").strip().upper()
+    if lbl == "GREEN_DIRECT_PROFIT_CHANCE":
+        return "🟢"
+    if lbl == "YELLOW_PROFIT_CHANCE_VOLATILE":
+        return "🟡"
+    if lbl == "ORANGE_DIP_REBOUND_CHANCE":
+        return "🟠"
+    if lbl in ("RED_FAST_FAIL", "RED_NO_PROFIT_CHANCE"):
+        return "🔴"
+    return "⚪"
+
+
+def _d1_label_to_light(label: str) -> str:
+    """paper_watch_log d1_label → 신호등 이모지."""
+    lbl = (label or "").strip().upper()
+    if not lbl or lbl in ("D1_PENDING", "NAN"):
+        return "⚪"
+    if lbl in {
+        "GREEN_DIRECT_PROFIT_CHANCE",
+        "YELLOW_PROFIT_CHANCE_VOLATILE",
+        "ORANGE_DIP_REBOUND_CHANCE",
+        "RED_FAST_FAIL",
+        "RED_NO_PROFIT_CHANCE",
+        "GRAY_PENDING_OR_INSUFFICIENT",
+    }:
+        return _traffic_label_to_light(lbl)
+    # 강세 — +1.3% 도달, -2% 없음 / 방어 성공
+    if lbl in ("D1_DIRECT_RISE", "D1_PLUS1_PROTECT_SUCCESS", "D1_PRICE_DEFENSE"):
+        return "🟢"
+    # 회복 — +1.3% 먼저 도달 + -2%도 터치 / dip rebound
+    if lbl in ("D1_VOLATILE_PLUS_FIRST", "D1_VOLATILE_BOTH", "D1_DIP_REBOUND"):
+        return "🟡"
+    # 실패 — -2% 먼저 후 +1.3% 도달
+    if lbl in ("D1_VOLATILE_MINUS_FIRST",):
+        return "🟠"
+    # 약세 — +1.3% 기회 없이 -2% 발생
+    if lbl in ("D1_FAST_FAIL",):
+        return "🔴"
+    # 보합 / 미발생
+    return "⚪"
 
 
 @st.cache_data(show_spinner=False)
@@ -8142,14 +8361,14 @@ def _eod_badge_pills(badge_text: Any) -> str:
 
 
 def render_eod_active_watch_preview() -> None:
-    """EOD-D0 Active Watch main route. D0 storage, active watch, and webhook Top3 stay separated."""
+    """Bell Watch main route. D0 storage, active watch, and webhook Top3 stay separated."""
     manifest = load_eod_active_watch_manifest()
     top3 = load_eod_active_watch_csv("webhook_top3_preview.csv")
     active = load_eod_active_watch_csv("active_watchlist.csv")
     d0_pool = load_eod_active_watch_csv("d0_storage_pool_latest.csv")
     legacy = load_eod_active_watch_csv("legacy_baseline_summary.csv")
 
-    st.markdown("### EOD-D0 Active Watch · 운영 메인")
+    st.markdown("### Bell Watch · 운영 메인")
     st.caption("장후 확정 D0 저장풀을 다음 거래일부터 감시하고, 15시 이하 데이터만으로 15시 Top3를 뽑습니다. 자동매매·주문·계좌 API는 없습니다.")
     # 선정 기준 명시 — Codex retro labeling 핸드오프 권장 (사용자 메시지 일관성)
     st.markdown(
@@ -8162,7 +8381,7 @@ def render_eod_active_watch_preview() -> None:
     )
 
     if not manifest and top3.empty:
-        st.info(f"EOD-D0 Active Watch preview 데이터가 없습니다. 경로: `{EOD_ACTIVE_WATCH_PREVIEW_DIR}`")
+        st.info(f"Bell Watch preview 데이터가 없습니다. 경로: `{EOD_ACTIVE_WATCH_PREVIEW_DIR}`")
         return
 
     signal_date = str(manifest.get("signal_date") or (top3["signal_date"].iloc[0] if not top3.empty and "signal_date" in top3.columns else ""))[:10]
@@ -8253,7 +8472,7 @@ def render_eod_active_watch_preview() -> None:
             st.caption("D0 storage pool 파일이 없습니다.")
         else:
             st.dataframe(d0_pool[[c for c in d0_cols if c in d0_pool.columns]].head(200), use_container_width=True, hide_index=True, height=260)
-    with st.expander("EOD 현재 본진 vs 기존 V2/BellGuard/P0 비교 기준선", expanded=False):
+    with st.expander("Bell Watch 본진 vs 기존 V2/BellGuard/P0 비교 기준선", expanded=False):
         if legacy.empty:
             st.caption("legacy_baseline_summary.csv 파일이 없습니다.")
         else:
@@ -8286,7 +8505,7 @@ def render_eod_active_watch_preview() -> None:
                     st.caption(
                         f"P0_VALUE_20D baseline 대비 위험보정 "
                         f"<b style='color:{diff_color}'>{diff_sign}{diff:.2f}pp</b> "
-                        f"(EOD {eod_ra:.2f} vs P0 {p0_ra:.2f})",
+                        f"(Bell Watch {eod_ra:.2f} vs P0 {p0_ra:.2f})",
                         unsafe_allow_html=True,
                     )
                 st.markdown("---")
@@ -8319,14 +8538,14 @@ def render_eod_active_watch_preview() -> None:
                 "risk_adjusted_score": "위험보정",
             }
             st.dataframe(legacy[[c for c in show_cols if c in legacy.columns]].rename(columns=labels), use_container_width=True, hide_index=True)
-            st.caption("EOD 현재 본진과 기존 P0/V2/BellGuard는 내부 학습용 비교표입니다. 현재 메인 후보는 EOD-D0 Active Watch입니다.")
+            st.caption("Bell Watch 본진과 기존 P0/V2/BellGuard는 내부 학습용 비교표입니다. 현재 메인 후보는 Bell Watch입니다.")
     st.caption(f"데이터: `{EOD_ACTIVE_WATCH_PREVIEW_DIR}` · D0 저장풀, Active Watchlist, 15시 Top3는 별도 파일로 분리됩니다.")
 
 
 def render_eod_paper_watch_tab() -> None:
     """Paper Watch 사후 라벨링 — Codex retro labeling 산출(2026-05-20) 표시.
 
-    실제 발송이 아니라 매 거래일 15시에 EOD Top3로 뽑힌 후보를 누적 로그로 저장하고,
+    실제 발송이 아니라 매 거래일 15시에 Bell Watch Top3로 뽑힌 후보를 누적 로그로 저장하고,
     D+1 / H5(5거래일 후) 결과 확정 시 사후 라벨과 해석 태그를 자동 갱신한다.
 
     절대 미래시 금지 (D+1/H5 결과는 표시·평가·학습 메모용이며 선정 점수에 들어가지 않음).
@@ -8336,7 +8555,7 @@ def render_eod_paper_watch_tab() -> None:
 
     st.markdown("### Paper Watch · 사후 라벨링")
     st.caption(
-        "매 거래일 15시 EOD-D0 Active Watch Top3 후보를 누적 저장하고 D+1·H5 결과 확정 시 "
+        "매 거래일 15시 Bell Watch Top3 후보를 누적 저장하고 D+1·H5 결과 확정 시 "
         "사후 라벨/해석 태그를 자동 갱신합니다. 미래 결과는 후보 선정에 사용되지 않습니다."
     )
 
@@ -8643,7 +8862,7 @@ def render_eod_chart_learning_tab() -> None:
 
     st.markdown("### Chart Learning · 과거순 Step Replay")
     st.caption(
-        "1년치 EOD-D0 Active Watch 후보를 과거순으로 한 명씩 펼치며 학습. "
+        "1년치 Bell Watch 후보를 과거순으로 한 명씩 펼치며 학습. "
         "결과는 기본 숨김 — 사용자가 단계별로 공개해 \"15시 시점 데이터로 맞췄는지\" 자기 평가."
     )
 
@@ -8753,7 +8972,7 @@ def render_eod_chart_learning_tab() -> None:
             pass
     with head_cols[2]:
         st.metric("신호일", str(r.get("signal_date", ""))[:10] or "—")
-        st.caption("EOD 15시 신호 기준")
+        st.caption("Bell Watch 15시 신호 기준")
     with head_cols[3]:
         ep = r.get("entry_1500_price")
         try:
@@ -9060,16 +9279,16 @@ def render_today_tab(
     picks: pd.DataFrame | None = None,
     scan: dict[str, Any] | None = None,
 ) -> None:
-    """오늘 탭 — EOD-D0 Active Watch main route + legacy records."""
+    """오늘 탭 — Bell Watch main route + legacy records."""
     st.markdown(
         '<div class="cb-note" style="border-left-color:#10b981; background:rgba(16,185,129,0.08);">'
         '<b>투자 권유가 아닙니다.</b> Paper Watch / 수동 복기 화면입니다. '
-        '메인 표시는 EOD-D0 Active Watch이며 기존 BellGuard/V2/Daily3는 비교·기록용으로 보존합니다.'
+        '메인 표시는 Bell Watch이며 기존 BellGuard/V2/Daily3는 비교·기록용으로 보존합니다.'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    # 1) EOD-D0 Active Watch main route
+    # 1) Bell Watch main route
     render_eod_active_watch_preview()
 
     st.markdown("---")
@@ -9141,7 +9360,7 @@ def main() -> None:
     st.title("ClosingBell 수동 복기 대시보드")
     st.caption("읽기 전용 · 실전 주문 아님 · 자동매매 아님 · 수동 검토용")
     st.caption(
-        "메인 표시: EOD-D0 Active Watch  ·  기존 BellGuard/V2/Daily3는 기록/비교용 보존  ·  현재일 후보에는 미래 결과 미노출"
+        "메인 표시: Bell Watch  ·  기존 BellGuard/V2/Daily3는 기록/비교용 보존  ·  현재일 후보에는 미래 결과 미노출"
     )
 
     # ── 온라인 (GitHub/Streamlit Cloud) 모드 ──
