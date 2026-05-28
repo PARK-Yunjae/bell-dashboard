@@ -1,0 +1,18 @@
+{
+  "schema": "closingbell.ai_oneline_recent20.v1",
+  "generated_at": "2026-05-27T23:20:21",
+  "ai_engine": "CODEX_RULED_ONELINE_V0",
+  "status": "ok",
+  "operation_touched": false,
+  "webhook_send": false,
+  "scheduler_changed": false,
+  "order_or_account_api": false,
+  "signal_date_min": "2026-04-27",
+  "signal_date_max": "2026-05-27",
+  "candidate_rows": 60,
+  "h5_evaluable_rows": 45,
+  "inputs_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_ai_oneline_recent20_20260527\\csv\\bell_watch_ai_oneline_recent20_inputs.csv",
+  "outputs_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_ai_oneline_recent20_20260527\\csv\\bell_watch_ai_oneline_recent20_outputs.csv",
+  "eval_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_ai_oneline_recent20_20260527\\csv\\bell_watch_ai_oneline_recent20_eval.csv",
+  "report_md": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_ai_oneline_recent20_20260527\\reports\\bell_watch_ai_oneline_recent20_report.md"
+}

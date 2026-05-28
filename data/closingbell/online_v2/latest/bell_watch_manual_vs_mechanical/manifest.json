@@ -1,0 +1,45 @@
+{
+  "schema": "closingbell.bell_watch_manual_vs_mechanical.v1",
+  "generated_at": "2026-05-27T21:55:24",
+  "status": "ok",
+  "baseline_model": "BASELINE_EOD_VALUE_TOP3",
+  "signal_date_min": "2025-04-02",
+  "signal_date_max": "2026-05-19",
+  "eligible_signal_days": 275,
+  "baseline_top3_rows": 825,
+  "trade_exposure_rows": 3162,
+  "strategies": [
+    "MECHANICAL_TOP1",
+    "MECHANICAL_TOP2",
+    "MECHANICAL_TOP3",
+    "HUMAN_PROXY_A",
+    "HUMAN_PROXY_RISK_OFF",
+    "NO_TRADE_BAD_DAY_FILTER",
+    "BEST_OF_TOP3_ORACLE",
+    "WORST_OF_TOP3_ORACLE"
+  ],
+  "operation_touched": false,
+  "webhook_send": false,
+  "scheduler_changed": false,
+  "order_or_account_api": false,
+  "selection_feature_guard": "No D+1/H5 outcome columns are used in HUMAN_PROXY_A scoring.",
+  "label_guard": "Primary comparison uses only signal days where all baseline Top3 rows have D+5 labels.",
+  "outputs": {
+    "summary_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_manual_vs_mechanical_20260526\\csv\\bell_watch_manual_vs_mechanical_summary.csv",
+    "by_month_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_manual_vs_mechanical_20260526\\csv\\bell_watch_manual_vs_mechanical_by_month.csv",
+    "by_recent_window_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_manual_vs_mechanical_20260526\\csv\\bell_watch_manual_vs_mechanical_by_recent_window.csv",
+    "equity_curve_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_manual_vs_mechanical_20260526\\csv\\bell_watch_manual_vs_mechanical_equity_curve.csv",
+    "daily_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_manual_vs_mechanical_20260526\\csv\\bell_watch_manual_vs_mechanical_daily.csv",
+    "trades_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_manual_vs_mechanical_20260526\\csv\\bell_watch_manual_vs_mechanical_trades.csv",
+    "proxy_scores_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_manual_vs_mechanical_20260526\\csv\\bell_watch_manual_proxy_scores.csv",
+    "break_even_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_manual_vs_mechanical_20260526\\csv\\bell_watch_manual_pick_break_even.csv",
+    "report_md": "C:\\Coding\\data\\closingbell\\research_index\\bell_watch_manual_vs_mechanical_20260526\\reports\\bell_watch_manual_vs_mechanical_report.md"
+  },
+  "dashboard_note": "Data bundle only. UI wiring should remain read-only and must not alter webhook/scheduler/order paths.",
+  "recommended_default_files": [
+    "bell_watch_manual_vs_mechanical_summary.csv",
+    "bell_watch_manual_vs_mechanical_by_recent_window.csv",
+    "bell_watch_manual_vs_mechanical_equity_curve.csv",
+    "bell_watch_manual_proxy_scores.csv"
+  ]
+}

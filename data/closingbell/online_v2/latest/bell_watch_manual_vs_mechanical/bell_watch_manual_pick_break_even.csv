@@ -1,0 +1,9 @@
+﻿metric,value,note
+avg_best_of_top3_return,12.883530364968342,Post-outcome upper bound; not usable live
+avg_top3_equal_weight_return,1.798361258751622,Mechanical Top3 equal-weight H5 close return
+avg_top1_return,3.2387620618175763,Mechanical rank1 H5 close return
+avg_worst_of_top3_return,-8.330084417087036,Post-outcome downside reference
+human_proxy_best_hit_rate,40.0,How often HUMAN_PROXY_A picked the best H5 close result
+human_proxy_worst_hit_rate,23.636363636363637,How often HUMAN_PROXY_A picked the worst H5 close result
+best_pick_rate_needed_to_match_top3,33.333333333333336,Assumes non-best picks are random among the other two
+best_pick_rate_needed_to_match_top1,41.99596349118486,Assumes non-best picks are random among the other two

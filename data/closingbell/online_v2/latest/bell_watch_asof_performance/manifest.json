@@ -1,0 +1,13 @@
+{
+  "schema": "closingbell.bell_watch_asof_performance.v1",
+  "generated_at": "2026-05-27T22:02:42",
+  "status": "ok",
+  "as_of_min": "2025-04-02",
+  "as_of_max": "2026-05-27",
+  "web_feasible": true,
+  "default_card_file": "bell_watch_asof_latest_cards.csv",
+  "default_wide_file": "bell_watch_asof_performance_wide.csv",
+  "signal_lookup_file": "bell_watch_signal_date_dplus_summary.csv",
+  "window_audit_file": "bell_watch_asof_window_audit.csv",
+  "note": "Dashboard-bundled subset; no webhook/scheduler/order paths touched."
+}

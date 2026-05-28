@@ -106,6 +106,9 @@ ONLINE_V2_DIR = _REPO_BUNDLED_ONLINE_V2 if _REPO_BUNDLED_ONLINE_V2.exists() else
 DAILY3_POOL_PREVIEW_DIR = ONLINE_V2_DIR / "daily3_pool_preview"
 EOD_ACTIVE_WATCH_PREVIEW_DIR = ONLINE_V2_DIR / "eod_d0_active_watch_preview"
 EOD_ACTIVE_WATCH_1Y_DIR = ONLINE_V2_DIR / "eod_d0_active_watch_1y"
+# Bell Watch 수동검증 read-only 연구 데이터 (Codex 2026-05-26 산출)
+BELL_WATCH_ASOF_DIR = ONLINE_V2_DIR / "bell_watch_asof_performance"
+BELL_WATCH_MANUAL_VS_MECH_DIR = ONLINE_V2_DIR / "bell_watch_manual_vs_mechanical"
 # Paper Watch 사후 라벨링 데이터 — Codex retro labeling 산출 (2026-05-20)
 # online 사본 우선, 없으면 shared 원본 fallback (publish 시 동기화될 예정)
 EOD_PAPER_WATCH_DIRS: list[Path] = [
@@ -9356,6 +9359,511 @@ def render_lab_tab(*, online: bool) -> None:
         render_stats()
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Bell Watch 수동검증 (read-only, Codex 2026-05-26 핸드오프 §1~§6)
+# 자동매매/투자권유 아님. 운영 산식·웹훅·스케줄러 미접촉.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _bell_watch_mtime_ns(path: Path) -> int:
+    try:
+        return path.stat().st_mtime_ns
+    except OSError:
+        return 0
+
+
+@st.cache_data(show_spinner=False)
+def _load_bell_watch_csv_cached(
+    path_text: str,
+    mtime_ns: int,
+    parse_signal_date: bool = False,
+) -> pd.DataFrame:
+    path = Path(path_text)
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        df = pd.read_csv(path, encoding="utf-8-sig")
+        if parse_signal_date and "signal_date" in df.columns:
+            df["signal_date"] = pd.to_datetime(df["signal_date"], errors="coerce")
+        return df
+    except Exception:  # noqa: BLE001
+        return pd.DataFrame()
+
+
+@st.cache_data(show_spinner=False)
+def _load_bell_watch_json_cached(path_text: str, mtime_ns: int) -> dict[str, Any]:
+    path = Path(path_text)
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def load_bell_watch_asof_cards() -> pd.DataFrame:
+    p = BELL_WATCH_ASOF_DIR / "bell_watch_asof_latest_cards.csv"
+    return _load_bell_watch_csv_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def load_bell_watch_asof_manifest() -> dict[str, Any]:
+    p = BELL_WATCH_ASOF_DIR / "manifest.json"
+    return _load_bell_watch_json_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def load_mvm_summary() -> pd.DataFrame:
+    p = BELL_WATCH_MANUAL_VS_MECH_DIR / "bell_watch_manual_vs_mechanical_summary.csv"
+    return _load_bell_watch_csv_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def load_mvm_by_recent_window() -> pd.DataFrame:
+    p = BELL_WATCH_MANUAL_VS_MECH_DIR / "bell_watch_manual_vs_mechanical_by_recent_window.csv"
+    return _load_bell_watch_csv_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def load_mvm_equity_curve() -> pd.DataFrame:
+    p = BELL_WATCH_MANUAL_VS_MECH_DIR / "bell_watch_manual_vs_mechanical_equity_curve.csv"
+    return _load_bell_watch_csv_cached(str(p), _bell_watch_mtime_ns(p), parse_signal_date=True)
+
+
+def load_mvm_break_even() -> pd.DataFrame:
+    p = BELL_WATCH_MANUAL_VS_MECH_DIR / "bell_watch_manual_pick_break_even.csv"
+    return _load_bell_watch_csv_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def load_mvm_manual_proxy_scores() -> pd.DataFrame:
+    p = BELL_WATCH_MANUAL_VS_MECH_DIR / "bell_watch_manual_proxy_scores.csv"
+    return _load_bell_watch_csv_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+# 전략 표시명/분류 라벨 (Codex 핸드오프 §4)
+_MVM_STRATEGY_META: dict[str, dict[str, str]] = {
+    "MECHANICAL_TOP1": {"label": "기계 Top1", "role": "비교 기준", "icon": "🤖"},
+    "MECHANICAL_TOP2": {"label": "기계 Top2", "role": "분산 기준선", "icon": "🤖"},
+    "MECHANICAL_TOP3": {"label": "기계 Top3", "role": "분산 기준선", "icon": "🤖"},
+    "HUMAN_PROXY_A": {"label": "수동 Proxy A", "role": "수동 체크리스트 보조", "icon": "🧠"},
+    "HUMAN_PROXY_RISK_OFF": {"label": "수동 Risk-Off", "role": "방어형 위험 경고 배지 후보", "icon": "🛡"},
+    "NO_TRADE_BAD_DAY_FILTER": {"label": "안 사는 날 필터", "role": "방어형 안 사는 날 보조", "icon": "🚫"},
+    "BEST_OF_TOP3_ORACLE": {"label": "Best Oracle", "role": "참고 상한 (운영 불가)", "icon": "✨"},
+    "WORST_OF_TOP3_ORACLE": {"label": "Worst Oracle", "role": "참고 하한 (운영 불가)", "icon": "💀"},
+}
+
+_MVM_PRIMARY_ORDER = [
+    "MECHANICAL_TOP1",
+    "MECHANICAL_TOP2",
+    "MECHANICAL_TOP3",
+    "HUMAN_PROXY_A",
+    "HUMAN_PROXY_RISK_OFF",
+    "NO_TRADE_BAD_DAY_FILTER",
+]
+
+
+def _asof_risk_badges(row: dict[str, Any]) -> list[tuple[str, str, str]]:
+    """as-of 카드 → 위험 배지 (red/orange/gray)."""
+    bits: list[tuple[str, str, str]] = []
+    status = str(row.get("sample_status", "")).upper()
+    if status in ("NO_LABELS", "LOW_SAMPLE"):
+        bits.append(("표본 부족", "#f1f5f9", "#475569"))
+    minus2_touch = numeric(row.get("cum_d5_minus2_touch_rate"))
+    minus2_first = numeric(row.get("cum_d5_minus2_before_plus13_rate"))
+    plus13_first = numeric(row.get("cum_d5_plus13_before_minus2_rate"))
+    window_id = str(row.get("window_id", ""))
+    # 최근 20거래일 -2 touch >= 80
+    if window_id == "ROLLING_20TD" and minus2_touch is not None and minus2_touch >= 80:
+        bits.append(("최근 난이도 높음", "#ffedd5", "#9a3412"))
+    # 최근 20거래일 -2 우선이 +1.3 우선보다 큼
+    if (
+        window_id == "ROLLING_20TD"
+        and minus2_first is not None
+        and plus13_first is not None
+        and minus2_first >= plus13_first
+    ):
+        bits.append(("-2 우선 주의 · 매수 축소 검토", "#fee2e2", "#991b1b"))
+    return bits
+
+
+def _render_asof_card(row: dict[str, Any]) -> None:
+    """as-of 한 윈도우 카드."""
+    label = row.get("window_label", row.get("window_id", "—"))
+    n = numeric(row.get("n_d5_eligible_rows"))
+    plus13_first = numeric(row.get("cum_d5_plus13_before_minus2_rate"))
+    minus2_first = numeric(row.get("cum_d5_minus2_before_plus13_rate"))
+    minus2_touch = numeric(row.get("cum_d5_minus2_touch_rate"))
+    median_ret = numeric(row.get("median_ret_d5_close"))
+    avg_mfe = numeric(row.get("cum_d5_avg_mfe_pct"))
+    avg_mae = numeric(row.get("cum_d5_avg_mae_pct"))
+
+    bits_html = ""
+    badges = _asof_risk_badges(row)
+    if badges:
+        bits_html = "".join(
+            f'<span style="background:{bg}; color:{fg}; padding:2px 8px; '
+            f'border-radius:999px; font-size:0.74rem; font-weight:600; margin-right:4px;">{lbl}</span>'
+            for lbl, bg, fg in badges
+        )
+
+    def _pct(v: float | None) -> str:
+        return f"{v:.1f}%" if v is not None else "—"
+
+    def _signed_pct(v: float | None) -> str:
+        return f"{v:+.1f}%" if v is not None else "—"
+
+    st.markdown(
+        f"""
+<div style="border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; background:#ffffff;">
+  <div style="font-size:0.78rem; color:#64748b; margin-bottom:4px;">{label} (n={int(n) if n is not None else '—'})</div>
+  <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:baseline;">
+    <div><span style="color:#475569; font-size:0.74rem;">+1.3 먼저</span> <b style="color:#15803d;">{_pct(plus13_first)}</b></div>
+    <div><span style="color:#475569; font-size:0.74rem;">-2 먼저</span> <b style="color:#b91c1c;">{_pct(minus2_first)}</b></div>
+    <div><span style="color:#475569; font-size:0.74rem;">-2 touch</span> <b>{_pct(minus2_touch)}</b></div>
+    <div><span style="color:#475569; font-size:0.74rem;">D+5 종가 중앙값</span> <b>{_signed_pct(median_ret)}</b></div>
+    <div><span style="color:#475569; font-size:0.74rem;">평균 MFE/MAE</span> <b>{_signed_pct(avg_mfe)} / {_signed_pct(avg_mae)}</b></div>
+  </div>
+  <div style="margin-top:6px;">{bits_html}</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_mvm_strategy_card(row: dict[str, Any]) -> None:
+    """기계 vs 수동 비교 한 전략 카드."""
+    strat = str(row.get("strategy", ""))
+    meta = _MVM_STRATEGY_META.get(strat, {"label": strat, "role": "—", "icon": "•"})
+    buy_days = int(numeric(row.get("buy_days"), 0))
+    no_trade = int(numeric(row.get("no_trade_days"), 0))
+    avg_h5 = numeric(row.get("avg_ret_h5_close"))
+    med_h5 = numeric(row.get("median_ret_h5_close"))
+    win = numeric(row.get("h5_close_win_rate"))
+    mdd = numeric(row.get("h5_close_mdd_pct"))
+    plus13_first = numeric(row.get("d1_plus13_before_minus2_rate"))
+    minus2_first = numeric(row.get("d1_minus2_before_plus13_rate"))
+    best_hit = numeric(row.get("hit_best_of_top3_rate"))
+    worst_hit = numeric(row.get("hit_worst_of_top3_rate"))
+
+    avg_color = "#15803d" if (avg_h5 or 0) > 0 else "#b91c1c"
+
+    def _pct(v: float | None) -> str:
+        return f"{v:.1f}%" if v is not None else "—"
+
+    def _signed_pct(v: float | None) -> str:
+        return f"{v:+.2f}%" if v is not None else "—"
+
+    st.markdown(
+        f"""
+<div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; background:#ffffff; height:100%;">
+  <div style="font-size:0.86rem; font-weight:600;">{meta['icon']} {meta['label']}</div>
+  <div style="font-size:0.72rem; color:#64748b; margin-bottom:8px;">{meta['role']}</div>
+  <div style="font-size:1.45rem; font-weight:700; color:{avg_color};">{_signed_pct(avg_h5)}</div>
+  <div style="font-size:0.72rem; color:#475569; margin-bottom:8px;">평균 H5 종가 수익률 (중앙값 {_signed_pct(med_h5)})</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:0.78rem;">
+    <div><span style="color:#64748b;">승률</span> <b>{_pct(win)}</b></div>
+    <div><span style="color:#64748b;">MDD</span> <b style="color:#b91c1c;">{_signed_pct(mdd)}</b></div>
+    <div><span style="color:#64748b;">+1.3 먼저</span> <b style="color:#15803d;">{_pct(plus13_first)}</b></div>
+    <div><span style="color:#64748b;">-2 먼저</span> <b style="color:#b91c1c;">{_pct(minus2_first)}</b></div>
+    <div><span style="color:#64748b;">매수일</span> <b>{buy_days}</b></div>
+    <div><span style="color:#64748b;">노트레이드</span> <b>{no_trade}</b></div>
+    <div><span style="color:#64748b;">best hit</span> <b>{_pct(best_hit)}</b></div>
+    <div><span style="color:#64748b;">worst hit</span> <b>{_pct(worst_hit)}</b></div>
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+
+def render_bell_watch_manual_review_tab() -> None:
+    """Bell Watch 수동검증 — read-only 연구/복기 화면.
+
+    핸드오프 (2026-05-26) §1~§6 구현:
+    §1 새 탭 안내 박스
+    §2 장세 체력 카드 (asof_latest_cards)
+    §3 오늘 Top3 수동 체크리스트 (webhook_top3_preview, session_state 메모)
+    §4 기계 vs 수동 비교 카드 (manual_vs_mechanical_summary)
+    §5 그래프 (equity_curve, by_recent_window)
+    §6 CSV expander
+    """
+    # ── §1 안내 박스 ──
+    st.markdown(
+        '<div style="background:#fef3c7; border-left:4px solid #d97706; padding:10px 14px; '
+        'border-radius:6px; margin:8px 0 14px; font-size:0.86rem; color:#78350f;">'
+        '⚠️ <b>이 화면은 자동매매/투자권유가 아닙니다.</b> Bell Watch가 뽑은 Top3를 사람이 '
+        '복기/연구할 때 참고하는 read-only 연구 화면입니다. 사후 결과 라벨은 오늘 카드와 분리됩니다. '
+        '운영 산식·웹훅·스케줄러·주문/계좌 API는 일절 변경되지 않습니다.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # ──────── §2 장세 체력 카드 ────────
+    st.markdown("### 🩺 오늘 장세 체력 (as-of)")
+    asof = load_bell_watch_asof_cards()
+    asof_manifest = load_bell_watch_asof_manifest()
+    if asof.empty:
+        st.info(f"as-of 데이터 없음. 경로: `{BELL_WATCH_ASOF_DIR}`")
+    else:
+        latest_date = asof_manifest.get("effective_as_of_date") or asof["effective_as_of_date"].astype(str).max()
+        st.caption(
+            f"as-of 기준일: **{latest_date}** · 모델: BASELINE_EOD_VALUE_TOP3 · "
+            "최근 구간 난이도가 높으면 매수 축소를 검토하는 보조 카드입니다."
+        )
+        window_order = ["EXPANDING", "ROLLING_120TD", "ROLLING_60TD", "ROLLING_20TD"]
+        asof_sorted = asof.copy()
+        asof_sorted["__o"] = asof_sorted["window_id"].map({w: i for i, w in enumerate(window_order)}).fillna(99)
+        asof_sorted = asof_sorted.sort_values("__o")
+        cols = st.columns(min(len(asof_sorted), 4))
+        for i, (_, row) in enumerate(asof_sorted.iterrows()):
+            with cols[i % len(cols)]:
+                _render_asof_card(row.to_dict())
+
+    st.markdown("---")
+
+    # ──────── §3 오늘 Top3 수동 체크리스트 ────────
+    st.markdown("### ✏️ 오늘 Top3 수동 체크리스트")
+    st.caption(
+        "오늘 Top3를 한눈에 보고 종목별 메모와 1순위/제외를 기록합니다. "
+        "기록은 세션 메모리에만 저장되며 운영 산식/선정 순위에 반영되지 않습니다."
+    )
+    top3_df = load_eod_active_watch_csv("webhook_top3_preview.csv")
+    if top3_df.empty:
+        st.info("오늘 Top3 데이터 없음.")
+    else:
+        # 최신 신호일만 (signal_date가 가장 큰 값)
+        top3_df["__sd"] = top3_df["signal_date"].astype(str).str[:10]
+        latest_sd = top3_df["__sd"].max()
+        latest_top3 = top3_df[top3_df["__sd"] == latest_sd].copy()
+        latest_top3["__rank"] = pd.to_numeric(latest_top3.get("webhook_rank", latest_top3.get("rank_num", "")), errors="coerce")
+        latest_top3 = latest_top3.sort_values("__rank")
+        st.caption(f"신호일: **{latest_sd}** · {len(latest_top3)}건")
+
+        check_cols = st.columns(min(len(latest_top3), 3) or 1)
+        memo_records: list[dict[str, str]] = []
+        for i, (_, row) in enumerate(latest_top3.iterrows()):
+            code = str(row.get("stock_code", "—"))
+            name = str(row.get("stock_name", "—"))
+            rank_v = row.get("__rank", "—")
+            try:
+                rank_int = int(rank_v) if pd.notna(rank_v) else "—"
+            except (TypeError, ValueError):
+                rank_int = "—"
+            key_base = f"bw_mr_{latest_sd}_{code}"
+            with check_cols[i % len(check_cols)]:
+                price = row.get("entry_1500_price", "—")
+                try:
+                    price_str = f"{float(price):,.0f}원"
+                except (TypeError, ValueError):
+                    price_str = "—"
+                age = row.get("trading_day_age", "—")
+
+                def _safe_pct(v: Any) -> str:
+                    try:
+                        return f"{float(v):+.1f}%" if pd.notna(v) and str(v).strip() else "—"
+                    except (TypeError, ValueError):
+                        return "—"
+
+                def _safe_num_disp(v: Any, fmt: str = "{:.1f}") -> str:
+                    try:
+                        if pd.notna(v) and str(v).strip():
+                            return fmt.format(float(v))
+                    except (TypeError, ValueError):
+                        pass
+                    return "—"
+
+                badge_txt = str(row.get("badge_text", "")).strip()
+                st.markdown(
+                    f"""
+<div style="border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; background:#f8fafc;">
+  <div style="font-size:0.94rem; font-weight:600;">{rank_int}. {name} ({code})</div>
+  <div style="font-size:0.78rem; color:#475569; margin-bottom:6px;">{price_str} · 감시 D+{age}</div>
+  <div style="font-size:0.78rem; line-height:1.6;">
+    <span style="color:#64748b;">15시 등락</span> {_safe_pct(row.get('signal_day_pct_change_1500'))}<br>
+    <span style="color:#64748b;">vs D0 종가</span> {_safe_pct(row.get('signal_vs_d0_close_pct'))} ·
+    <span style="color:#64748b;">vs D0 고가</span> {_safe_pct(row.get('signal_vs_d0_high_pct'))}<br>
+    <span style="color:#64748b;">거래량 유지</span> {_safe_num_disp(row.get('signal_volume_retention_vs_d0'))}% ·
+    <span style="color:#64748b;">RSI</span> {_safe_num_disp(row.get('rsi14_signal_1500'))}<br>
+    <span style="color:#64748b;">10만원 1주</span> {('Y' if str(row.get('current_seed_100k_buyable','')).lower() in ('true','1','yes','y') else 'N')}
+  </div>
+  <div style="font-size:0.72rem; color:#9a3412; margin-top:6px;">{badge_txt}</div>
+</div>
+""",
+                    unsafe_allow_html=True,
+                )
+                grade = st.selectbox(
+                    "등급",
+                    ["—", "A (강하게 검토)", "B (보통)", "C (약함)", "D (제외 검토)"],
+                    key=f"{key_base}_grade",
+                )
+                pick = st.radio(
+                    "오늘 선택",
+                    ["—", "1순위", "2순위", "제외"],
+                    horizontal=True,
+                    key=f"{key_base}_pick",
+                )
+                reason = st.text_area(
+                    "메모 (선택/제외 이유)",
+                    height=80,
+                    key=f"{key_base}_reason",
+                )
+                memo_records.append({
+                    "signal_date": latest_sd,
+                    "rank": str(rank_int),
+                    "code": code,
+                    "name": name,
+                    "grade": str(grade),
+                    "pick": str(pick),
+                    "reason": str(reason).strip(),
+                })
+
+        # 다운로드 가능 CSV
+        if memo_records:
+            memo_df = pd.DataFrame(memo_records)
+            csv_bytes = memo_df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
+            st.download_button(
+                "💾 오늘 메모 CSV 다운로드 (세션 기록)",
+                data=csv_bytes,
+                file_name=f"bell_watch_manual_review_{latest_sd}.csv",
+                mime="text/csv",
+            )
+
+    st.markdown("---")
+
+    # ──────── §4 기계 vs 수동 비교 카드 ────────
+    st.markdown("### ⚖️ 기계 vs 수동 비교 (누적)")
+    mvm = load_mvm_summary()
+    if mvm.empty:
+        st.info(f"manual_vs_mechanical 데이터 없음. 경로: `{BELL_WATCH_MANUAL_VS_MECH_DIR}`")
+    else:
+        all_window = mvm[mvm["window_id"].astype(str) == "ALL"].copy()
+        if all_window.empty:
+            all_window = mvm.copy()
+        # 주요 6개 전략을 카드로 (Oracle은 expander)
+        primary_rows = []
+        for strat in _MVM_PRIMARY_ORDER:
+            sub = all_window[all_window["strategy"].astype(str) == strat]
+            if not sub.empty:
+                primary_rows.append(sub.iloc[0].to_dict())
+        if primary_rows:
+            be_df = load_mvm_break_even()
+            be_map = {}
+            if not be_df.empty:
+                for _, br in be_df.iterrows():
+                    be_map[str(br.get("metric", ""))] = numeric(br.get("value"))
+            st.caption(
+                f"비교 기간: 2025-04-02 ~ 2026-05-18 · 274 신호일 · "
+                f"사람이 Top3 중 best를 골라야 하는 비율 · Top3 동일비중 대비 "
+                f"**{be_map.get('best_pick_rate_needed_to_match_top3', 0):.1f}%** / "
+                f"Top1 대비 **{be_map.get('best_pick_rate_needed_to_match_top1', 0):.1f}%**"
+            )
+            for chunk_start in range(0, len(primary_rows), 3):
+                chunk = primary_rows[chunk_start:chunk_start + 3]
+                ccols = st.columns(len(chunk))
+                for i, row in enumerate(chunk):
+                    with ccols[i]:
+                        _render_mvm_strategy_card(row)
+
+        with st.expander("✨💀 Oracle 참고 상한/하한 (운영 불가 · 사후 정답 기준)", expanded=False):
+            oracle_rows = []
+            for strat in ("BEST_OF_TOP3_ORACLE", "WORST_OF_TOP3_ORACLE"):
+                sub = all_window[all_window["strategy"].astype(str) == strat]
+                if not sub.empty:
+                    oracle_rows.append(sub.iloc[0].to_dict())
+            if oracle_rows:
+                ocols = st.columns(len(oracle_rows))
+                for i, row in enumerate(oracle_rows):
+                    with ocols[i]:
+                        _render_mvm_strategy_card(row)
+            st.caption(
+                "Oracle은 사후적으로 Top3 중 가장 좋은/나쁜 종목을 알았다고 가정한 결과로, "
+                "사람이 얼마나 맞혀야 하는지의 참고 상한과 하한입니다. 실전 사용 불가."
+            )
+
+    st.markdown("---")
+
+    # ──────── §5 그래프 ────────
+    st.markdown("### 📈 자본곡선 · 최근 구간 비교")
+    eq_df = load_mvm_equity_curve()
+    if eq_df.empty:
+        st.info("equity_curve 데이터 없음.")
+    else:
+        st.caption(
+            "각 신호일 basket을 같은 paper unit으로 복리 비교한 연구용 자본곡선입니다. "
+            "실제 5일 보유 겹침/현금제약 포트폴리오가 아닙니다. Oracle은 기본 제외."
+        )
+        # 주요 전략만 표시 (Oracle 제외)
+        eq_primary = eq_df[eq_df["strategy"].astype(str).isin(_MVM_PRIMARY_ORDER)].copy()
+        if not eq_primary.empty:
+            pivot = eq_primary.pivot_table(
+                index="signal_date",
+                columns="strategy",
+                values="equity_h5_close",
+                aggfunc="last",
+            ).sort_index()
+            # strategy 라벨 친근하게
+            pivot.columns = [_MVM_STRATEGY_META.get(c, {}).get("label", c) for c in pivot.columns]
+            st.line_chart(pivot, height=320)
+
+    by_win = load_mvm_by_recent_window()
+    if not by_win.empty:
+        st.markdown("##### 최근 윈도우별 평균 H5 종가 수익률")
+        recent = by_win[by_win["window_id"].astype(str).isin(["RECENT_20_SIGNAL_DAYS", "RECENT_60_SIGNAL_DAYS", "RECENT_120_SIGNAL_DAYS"])].copy()
+        recent = recent[recent["strategy"].astype(str).isin(_MVM_PRIMARY_ORDER)]
+        if not recent.empty:
+            recent["전략"] = recent["strategy"].map(lambda s: _MVM_STRATEGY_META.get(s, {}).get("label", s))
+            recent["윈도우"] = recent["window_id"].map({
+                "RECENT_20_SIGNAL_DAYS": "최근 20거래일",
+                "RECENT_60_SIGNAL_DAYS": "최근 60거래일",
+                "RECENT_120_SIGNAL_DAYS": "최근 120거래일",
+            })
+            pivot_recent = recent.pivot_table(
+                index="윈도우",
+                columns="전략",
+                values="avg_ret_h5_close",
+                aggfunc="first",
+            ).reindex(["최근 20거래일", "최근 60거래일", "최근 120거래일"])
+            st.bar_chart(pivot_recent, height=300)
+        st.caption("최근 20거래일은 표본이 작으므로 운영 교체보다 경고 배지/수동 복기 보조로 해석합니다.")
+
+    st.markdown("---")
+
+    # ──────── §6 CSV expander ────────
+    st.markdown("### 📁 상세 자료 (접힘)")
+
+    with st.expander("상세: 전체 비교 요약 (manual_vs_mechanical_summary)", expanded=False):
+        if not mvm.empty:
+            st.dataframe(mvm, use_container_width=True, hide_index=True, height=300)
+
+    with st.expander("상세: 최근 윈도우별 비교 (by_recent_window)", expanded=False):
+        if not by_win.empty:
+            st.dataframe(by_win, use_container_width=True, hide_index=True, height=300)
+
+    with st.expander("상세: 수동 proxy 점수 (manual_proxy_scores)", expanded=False):
+        ps = load_mvm_manual_proxy_scores()
+        if not ps.empty:
+            st.dataframe(ps.head(500), use_container_width=True, hide_index=True, height=300)
+            st.caption(f"전체 {len(ps):,}건 중 상위 500건 표시.")
+        else:
+            st.info("manual_proxy_scores 데이터 없음.")
+
+    with st.expander("상세: as-of 윈도우 audit", expanded=False):
+        audit_p = BELL_WATCH_ASOF_DIR / "bell_watch_asof_window_audit.csv"
+        if audit_p.exists():
+            try:
+                audit = pd.read_csv(audit_p, encoding="utf-8-sig")
+                st.dataframe(audit.head(500), use_container_width=True, hide_index=True, height=300)
+            except Exception as exc:  # noqa: BLE001
+                st.info(f"window audit 로드 실패: {exc}")
+
+    # 결론 박스
+    st.markdown(
+        '<div style="background:#f1f5f9; border-left:4px solid #475569; padding:10px 14px; '
+        'border-radius:6px; margin-top:10px; font-size:0.84rem; color:#1e293b;">'
+        '<b>실전 반영 분류</b>: 기계 Top1=비교 기준 · 기계 Top3=분산 기준선 · '
+        '수동 Proxy A=수동 체크리스트 보조 · Risk-Off=방어형 위험 배지 후보 · '
+        '안 사는 날 필터=방어형 보조 · Oracle=참고 상한/하한(운영 불가). '
+        '운영 모델 교체 없음.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     st.title("ClosingBell 수동 복기 대시보드")
     st.caption("읽기 전용 · 실전 주문 아님 · 자동매매 아님 · 수동 검토용")
@@ -9372,12 +9880,14 @@ def main() -> None:
             '</div>',
             unsafe_allow_html=True,
         )
-        tabs = st.tabs(["오늘", "복기", "메모"])
+        tabs = st.tabs(["오늘", "복기", "수동검증", "메모"])
         with tabs[0]:
             render_today_tab(online=True)
         with tabs[1]:
             render_replay_tab(online=True)
         with tabs[2]:
+            render_bell_watch_manual_review_tab()
+        with tabs[3]:
             render_notes_browser()
         return
 
@@ -9388,12 +9898,14 @@ def main() -> None:
     score = read_csv(str(SCORE_PATH))
     scan = read_json(str(SECRET_SCAN_SUMMARY))
 
-    tabs = st.tabs(["오늘", "복기", "메모"])
+    tabs = st.tabs(["오늘", "복기", "수동검증", "메모"])
     with tabs[0]:
         render_today_tab(online=False, d0_pool=d0_pool, score=score, picks=picks, scan=scan)
     with tabs[1]:
         render_replay_tab(online=False, score=score, enriched=enriched)
     with tabs[2]:
+        render_bell_watch_manual_review_tab()
+    with tabs[3]:
         render_notes_browser()
 
 
