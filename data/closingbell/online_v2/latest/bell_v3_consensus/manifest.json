@@ -1,0 +1,163 @@
+﻿{
+  "created_at": "2026-05-28T19:52:25",
+  "name": "bell_v3_consensus_20260528",
+  "source_detail": "C:\\Coding\\data\\closingbell\\research_index\\multi_strategy_period_compare_v2_20260528\\parquet\\multi_strategy_candidate_detail_v2.parquet",
+  "source_aliases": {
+    "eod_active": "EOD_ACTIVE_WATCH_LATEST_TOP3",
+    "eod_mechanical_top1": "EOD_MECHANICAL_TOP1",
+    "eod_human_proxy_a": "EOD_HUMAN_PROXY_A",
+    "v2_hybrid": "V2_HYBRID_HYBRID_D0_RISK_FILTER",
+    "daily3_pool": "DAILY3_POOL_TOP3",
+    "p0_trading_value": "P0_COMPARE_P0_TRADING_VALUE_TOP3",
+    "legacy_classic_webhook": "LEGACY_CLASSIC_WEBHOOK_TOP3",
+    "v2_record": "V2_RECORD_V2",
+    "bellguard_pricecap": "BELLGUARD_PRICECAP_TOP3",
+    "bellguard_d0_strict": "BELLGUARD_D0_STRICT_TOP3"
+  },
+  "variants": {
+    "V3_A_CONSENSUS_WEIGHTED": {
+      "label": "V3 A consensus weighted",
+      "weights": {
+        "consensus_score": 35,
+        "rank_score": 15,
+        "path_score": 15,
+        "risk_control_score": 15,
+        "market_condition_score": 10,
+        "liquidity_score": 5,
+        "manual_proxy_score": 5
+      },
+      "bonus": {}
+    },
+    "V3_B_WINRATE_ORIENTED": {
+      "label": "V3 B winrate oriented",
+      "weights": {
+        "consensus_score": 25,
+        "rank_score": 10,
+        "path_score": 10,
+        "risk_control_score": 10,
+        "market_condition_score": 30,
+        "liquidity_score": 5,
+        "manual_proxy_score": 10
+      },
+      "bonus": {}
+    },
+    "V3_C_RISK_CONTROL": {
+      "label": "V3 C risk control",
+      "weights": {
+        "consensus_score": 25,
+        "rank_score": 10,
+        "path_score": 15,
+        "risk_control_score": 30,
+        "market_condition_score": 10,
+        "liquidity_score": 5,
+        "manual_proxy_score": 5
+      },
+      "bonus": {}
+    },
+    "V3_D_V2_CONFIRM": {
+      "label": "V3 D V2 confirm",
+      "weights": {
+        "consensus_score": 30,
+        "rank_score": 10,
+        "path_score": 10,
+        "risk_control_score": 15,
+        "market_condition_score": 10,
+        "liquidity_score": 5,
+        "manual_proxy_score": 5
+      },
+      "bonus": {
+        "v2_hybrid": 15.0
+      }
+    },
+    "V3_E_EOD_FIRST_STABLE": {
+      "label": "V3 E EOD first stable",
+      "weights": {
+        "consensus_score": 25,
+        "rank_score": 25,
+        "path_score": 15,
+        "risk_control_score": 15,
+        "market_condition_score": 10,
+        "liquidity_score": 5,
+        "manual_proxy_score": 5
+      },
+      "bonus": {
+        "eod_active": 15.0
+      }
+    },
+    "V3_F_V2_AGGRESSIVE": {
+      "label": "V3 F V2 aggressive",
+      "weights": {
+        "consensus_score": 30,
+        "rank_score": 10,
+        "path_score": 10,
+        "risk_control_score": 5,
+        "market_condition_score": 25,
+        "liquidity_score": 5,
+        "manual_proxy_score": 5
+      },
+      "bonus": {
+        "v2_or_bellguard": 10.0
+      }
+    }
+  },
+  "guard": {
+    "operation_touched": false,
+    "webhook_send": false,
+    "scheduler_changed": false,
+    "order_or_account_api": false,
+    "active_route_changed": false,
+    "display_scope": "read-only research parallel view"
+  },
+  "validation": {
+    "variant_count": 6,
+    "candidate_days": 282,
+    "score_rows": 23328,
+    "selected_rows": 5076,
+    "top3_group_count": 1692,
+    "top3_bad_group_count": 0,
+    "top3_bad_groups": [],
+    "score_feature_columns": [
+      "consensus_score",
+      "rank_score",
+      "path_score",
+      "risk_control_score",
+      "market_condition_score",
+      "liquidity_score",
+      "manual_proxy_score",
+      "total_score"
+    ],
+    "leakage_columns_kept_for_evaluation_only": [
+      "ret_d5_close_pct",
+      "plus13_before_minus2_d5",
+      "minus2_before_plus13_d5",
+      "same_day_ambiguous_d5"
+    ],
+    "selection_uses_outcome_columns": false,
+    "webhook_send": false,
+    "scheduler_changed": false,
+    "order_or_account_api": false,
+    "active_route_changed": false
+  },
+  "outputs": {
+    "candidate_detail_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_candidate_detail.csv",
+    "candidate_detail_parquet": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\parquet\\bell_v3_consensus_candidate_detail.parquet",
+    "score_detail_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_score_detail.csv",
+    "score_detail_parquet": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\parquet\\bell_v3_consensus_score_detail.parquet",
+    "selected_top3_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_selected_top3.csv",
+    "summary_overall_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_summary_overall.csv",
+    "summary_year_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_summary_year.csv",
+    "summary_month_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_summary_month.csv",
+    "summary_week_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_summary_week.csv",
+    "summary_rolling_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_summary_rolling.csv",
+    "summary_asof_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_summary_asof.csv",
+    "overlap_group_summary_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_overlap_group_summary.csv",
+    "daily_success_detail_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_daily_success_detail.csv",
+    "daily_success_summary_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_daily_success_summary.csv",
+    "outlier_audit_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_outlier_audit.csv",
+    "vs_legacy_strategy_compare_csv": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_vs_legacy_strategy_compare.csv",
+    "report_md": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\reports\\bell_v3_consensus_report.md",
+    "manifest_json": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\manifest.json"
+  },
+  "dashboard_bundle": "C:\\Coding\\projects\\bell-dashboard\\data\\closingbell\\online_v2\\latest\\bell_v3_consensus",
+  "downloads_zip": "C:\\Users\\PYJ\\Downloads\\bell_v3_consensus_20260528.zip"
+}

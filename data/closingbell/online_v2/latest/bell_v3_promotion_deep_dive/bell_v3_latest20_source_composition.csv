@@ -1,0 +1,7 @@
+﻿v3_variant,window,signal_days,avg_eod_count,avg_v2_count,avg_human_count,all_eod_only_day_rate_pct,days_with_any_v2_rate_pct,days_with_any_human_rate_pct,latest_signal_date
+V3_A_CONSENSUS_WEIGHTED,latest_20_signal_days,20,1.85,0.9,0.55,30.0,55.00000000000001,55.00000000000001,2026-05-28
+V3_B_WINRATE_ORIENTED,latest_20_signal_days,20,1.65,1.1,0.55,30.0,55.00000000000001,55.00000000000001,2026-05-28
+V3_C_RISK_CONTROL,latest_20_signal_days,20,1.5,1.1,0.35,30.0,55.00000000000001,35.0,2026-05-28
+V3_D_V2_CONFIRM,latest_20_signal_days,20,1.15,1.55,0.2,30.0,55.00000000000001,20.0,2026-05-28
+V3_E_EOD_FIRST_STABLE,latest_20_signal_days,20,2.75,0.3,0.7,30.0,30.0,70.0,2026-05-28
+V3_F_V2_AGGRESSIVE,latest_20_signal_days,20,1.3,1.4,0.3,30.0,55.00000000000001,30.0,2026-05-28

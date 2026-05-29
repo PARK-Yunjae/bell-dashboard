@@ -1,0 +1,7 @@
+﻿gate,status,evidence,promotion_impact
+top3_fixed,PASS,top3_bad_group_count=0,필수
+core_source_freshness,FAIL,V2 Hybrid max=2026-05-14 vs EOD=2026-05-28; Human Proxy max=2026-05-19 vs EOD=2026-05-28,운영 전환 전 해결 필요
+V3_D_V2_CONFIRM_latest20_fallback_rate,FAIL,latest20 all_eod_only_day_rate=30.00%,fallback 비율이 높으면 진짜 V3가 아님
+V3_C_RISK_CONTROL_latest20_fallback_rate,FAIL,latest20 all_eod_only_day_rate=30.00%,fallback 비율이 높으면 진짜 V3가 아님
+V3_D_V2_CONFIRM_latest60_common_performance,OBSERVE,first=49.44 vs EOD 31.67; minus2first=25.56 vs EOD 25.00; median=0.95 vs EOD -2.17,성과 기준
+V3_C_RISK_CONTROL_latest60_common_performance,PASS,first=47.78 vs EOD 31.67; minus2first=23.89 vs EOD 25.00; median=0.62 vs EOD -2.17,성과 기준

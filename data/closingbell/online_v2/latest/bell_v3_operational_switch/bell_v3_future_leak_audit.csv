@@ -1,0 +1,2 @@
+﻿audit,status,forbidden_columns_present_in_score_detail,selection_uses_outcome_columns
+selection_forbidden_outcome_columns,PASS,,False

@@ -109,6 +109,9 @@ EOD_ACTIVE_WATCH_1Y_DIR = ONLINE_V2_DIR / "eod_d0_active_watch_1y"
 # Bell Watch 수동검증 read-only 연구 데이터 (Codex 2026-05-26 산출)
 BELL_WATCH_ASOF_DIR = ONLINE_V2_DIR / "bell_watch_asof_performance"
 BELL_WATCH_MANUAL_VS_MECH_DIR = ONLINE_V2_DIR / "bell_watch_manual_vs_mechanical"
+BELL_V3_CONSENSUS_DIR = ONLINE_V2_DIR / "bell_v3_consensus"
+BELL_V3_PROMOTION_DIR = ONLINE_V2_DIR / "bell_v3_promotion_deep_dive"
+BELL_V3_OPERATIONAL_DIR = ONLINE_V2_DIR / "bell_v3_operational_switch"
 # Paper Watch 사후 라벨링 데이터 — Codex retro labeling 산출 (2026-05-20)
 # online 사본 우선, 없으면 shared 원본 fallback (publish 시 동기화될 예정)
 EOD_PAPER_WATCH_DIRS: list[Path] = [
@@ -9295,6 +9298,9 @@ def render_today_tab(
     render_eod_active_watch_preview()
 
     st.markdown("---")
+    render_bell_v3_consensus_research()
+
+    st.markdown("---")
     with st.expander("기존 BellGuard 기록 후보", expanded=False):
         render_today_hybrid_shadow()
     st.caption("Daily3 D0_ONLY와 V2 기록 화면은 연구/복기 탭에 보존되어 있으며, 오늘 메인 후보에는 사용하지 않습니다.")
@@ -9398,6 +9404,358 @@ def _load_bell_watch_json_cached(path_text: str, mtime_ns: int) -> dict[str, Any
         return json.loads(path.read_text(encoding="utf-8-sig"))
     except Exception:  # noqa: BLE001
         return {}
+
+
+def load_bell_v3_consensus_csv(filename: str) -> pd.DataFrame:
+    p = BELL_V3_CONSENSUS_DIR / filename
+    return _load_bell_watch_csv_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def load_bell_v3_consensus_manifest() -> dict[str, Any]:
+    p = BELL_V3_CONSENSUS_DIR / "manifest.json"
+    return _load_bell_watch_json_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def load_bell_v3_promotion_csv(filename: str) -> pd.DataFrame:
+    p = BELL_V3_PROMOTION_DIR / filename
+    return _load_bell_watch_csv_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def load_bell_v3_operational_csv(filename: str) -> pd.DataFrame:
+    p = BELL_V3_OPERATIONAL_DIR / filename
+    return _load_bell_watch_csv_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def load_bell_v3_operational_manifest() -> dict[str, Any]:
+    p = BELL_V3_OPERATIONAL_DIR / "bell_v3_dashboard_bundle_manifest.json"
+    return _load_bell_watch_json_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def _v3_num(value: Any, default: float | None = None) -> float | None:
+    try:
+        if value is None or pd.isna(value):
+            return default
+        val = float(value)
+        if pd.isna(val):
+            return default
+        return val
+    except Exception:
+        return default
+
+
+def _v3_pct(value: Any) -> str:
+    val = _v3_num(value)
+    if val is None:
+        return "-"
+    return f"{val:.2f}%"
+
+
+def _v3_score(value: Any) -> str:
+    val = _v3_num(value)
+    if val is None:
+        return "-"
+    return f"{val:.2f}"
+
+
+def _v3_bool(value: Any) -> bool:
+    text = str(value).strip().lower()
+    return text in {"true", "1", "1.0", "y", "yes"}
+
+
+def _v3_code(value: Any) -> str:
+    text = str(value or "").strip()
+    if text.endswith(".0"):
+        text = text[:-2]
+    return text.zfill(6) if text else ""
+
+
+def _v3_sources(row: pd.Series) -> str:
+    mapping = [
+        ("in_eod_active_top3", "EOD"),
+        ("in_v2_hybrid_top3", "V2"),
+        ("in_eod_human_proxy_a", "Human"),
+        ("in_eod_mechanical_top1", "EOD Top1"),
+        ("in_daily3_pool_top3", "Daily3"),
+        ("in_p0_trading_value_top3", "P0"),
+        ("in_legacy_classic_webhook_top3", "Legacy"),
+        ("in_v2_record_top3", "V2 record"),
+        ("in_bellguard_pricecap_top3", "Pricecap"),
+        ("in_bellguard_d0_strict_top3", "D0 strict"),
+    ]
+    labels = [label for col, label in mapping if col in row.index and _v3_bool(row[col])]
+    return ", ".join(labels) if labels else "-"
+
+
+def render_bell_v3_operational_switch_panel() -> None:
+    manifest = load_bell_v3_operational_manifest()
+    latest = load_bell_v3_operational_csv("bell_v3_operational_latest_top3.csv")
+    freshness = load_bell_v3_operational_csv("bell_v3_source_freshness.csv")
+    fallback = load_bell_v3_operational_csv("bell_v3_fallback_audit.csv")
+
+    if not manifest and latest.empty and freshness.empty:
+        return
+
+    source_status = str(manifest.get("source_freshness", "UNKNOWN")).upper() if isinstance(manifest, dict) else "UNKNOWN"
+    active_variant = str(manifest.get("active_variant", "-")) if isinstance(manifest, dict) else "-"
+    fallback_route = str(manifest.get("fallback_route", "-")) if isinstance(manifest, dict) else "-"
+    raw_allowed = manifest.get("operational_switch_allowed_now", False) if isinstance(manifest, dict) else False
+    switch_allowed = raw_allowed if isinstance(raw_allowed, bool) else _v3_bool(raw_allowed)
+    latest20_eod_only = "-"
+    if not fallback.empty and "latest20_all_eod_only_day_rate_pct" in fallback.columns:
+        value = pd.to_numeric(fallback["latest20_all_eod_only_day_rate_pct"], errors="coerce").dropna()
+        if not value.empty:
+            latest20_eod_only = f"{value.iloc[-1]:.2f}%"
+
+    with st.expander("V3 Operational Switch QA", expanded=True):
+        if switch_allowed:
+            st.success("V3 operational switch is allowed by the current QA bundle.")
+        elif source_status == "FAIL":
+            st.error("V3 operational route switch is blocked: source freshness failed. Dashboard and webhook should stay on the fallback route.")
+        else:
+            st.warning("V3 operational route switch is not allowed yet. Keep this bundle in shadow/read-only mode.")
+
+        cols = st.columns(4)
+        cols[0].metric("Source freshness", source_status)
+        cols[1].metric("Active variant", active_variant)
+        cols[2].metric("Latest20 EOD-only", latest20_eod_only)
+        cols[3].metric("Switch allowed", "YES" if switch_allowed else "NO")
+        st.caption(f"Fallback route: `{fallback_route}`")
+
+        if not latest.empty:
+            show_cols = [
+                "signal_date",
+                "rank",
+                "stock_code",
+                "stock_name",
+                "v3_total_score",
+                "v3_grade",
+                "consensus_sources",
+                "fallback_used",
+                "fallback_reason",
+                "data_quality_flag",
+            ]
+            st.dataframe(latest[[c for c in show_cols if c in latest.columns]], use_container_width=True, hide_index=True)
+
+        if not freshness.empty and "status" in freshness.columns:
+            stale = freshness[freshness["status"].astype(str).str.upper().ne("OK")]
+            if not stale.empty:
+                stale_cols = ["source_name", "date_max", "latest_date_rows", "status", "note"]
+                st.markdown("#### Blocked sources")
+                st.dataframe(stale[[c for c in stale_cols if c in stale.columns]], use_container_width=True, hide_index=True)
+
+
+def render_bell_v3_consensus_research() -> None:
+    manifest = load_bell_v3_consensus_manifest()
+    selected = load_bell_v3_consensus_csv("bell_v3_consensus_selected_top3.csv")
+    overall = load_bell_v3_consensus_csv("bell_v3_consensus_summary_overall.csv")
+    rolling = load_bell_v3_consensus_csv("bell_v3_consensus_summary_rolling.csv")
+    score_detail = load_bell_v3_consensus_csv("bell_v3_consensus_score_detail.csv")
+    outlier = load_bell_v3_consensus_csv("bell_v3_consensus_outlier_audit.csv")
+    gates = load_bell_v3_promotion_csv("bell_v3_promotion_readiness_gates.csv")
+    freshness = load_bell_v3_promotion_csv("bell_v3_source_freshness.csv")
+    latest20 = load_bell_v3_promotion_csv("bell_v3_latest20_source_composition.csv")
+    threshold_matrix = load_bell_v3_promotion_csv("bell_v3_promotion_d1_d5_threshold_matrix.csv")
+    overlap_metrics = load_bell_v3_promotion_csv("bell_v3_eod_overlap_strategy_metrics.csv")
+
+    st.markdown("### V3 Hybrid Consensus 연구")
+    st.caption("V3 Consensus는 연구용 종합 후보입니다. 현재 운영 웹훅 선정식에는 아직 반영되지 않았습니다.")
+    render_bell_v3_operational_switch_panel()
+
+    if selected.empty or overall.empty:
+        st.info(f"V3 consensus 데이터가 없습니다. 경로: `{BELL_V3_CONSENSUS_DIR}`")
+        return
+
+    validation = manifest.get("validation", {}) if isinstance(manifest, dict) else {}
+    if not gates.empty:
+        fail_rows = gates[gates["status"].astype(str).str.upper().eq("FAIL")]
+        if fail_rows.empty:
+            st.success("V3 승격 게이트: FAIL 없음. 그래도 운영 전환 전에는 병렬 검증을 유지합니다.")
+        else:
+            fail_text = " / ".join(fail_rows["gate"].astype(str).tolist())
+            st.warning(f"V3 승격 게이트 FAIL: {fail_text}. 현재는 연구/병렬 표시 단계입니다.")
+        with st.expander("승격 게이트 상세", expanded=False):
+            st.dataframe(gates, use_container_width=True, hide_index=True)
+
+    if not freshness.empty or not latest20.empty:
+        warn_cols = st.columns(2)
+        with warn_cols[0]:
+            st.markdown("#### Source freshness")
+            if freshness.empty:
+                st.caption("source freshness 파일이 없습니다.")
+            else:
+                core = freshness[freshness["source"].astype(str).isin(["EOD Active", "V2 Hybrid", "Human Proxy", "Daily3", "P0"])]
+                st.dataframe(
+                    core[["source", "date_max", "latest_date_rows", "freshness_status", "stale_calendar_days_vs_eod_latest"]],
+                    use_container_width=True,
+                    hide_index=True,
+                    height=210,
+                )
+        with warn_cols[1]:
+            st.markdown("#### Latest 20 composition")
+            if latest20.empty:
+                st.caption("latest20 composition 파일이 없습니다.")
+            else:
+                focus_latest = latest20[latest20["v3_variant"].astype(str).isin(["V3_D_V2_CONFIRM", "V3_C_RISK_CONTROL"])]
+                st.dataframe(
+                    focus_latest[
+                        [
+                            "v3_variant",
+                            "all_eod_only_day_rate_pct",
+                            "days_with_any_v2_rate_pct",
+                            "days_with_any_human_rate_pct",
+                            "avg_eod_count",
+                            "avg_v2_count",
+                            "avg_human_count",
+                        ]
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                    height=210,
+                )
+
+    variants = sorted([str(v) for v in selected["v3_variant"].dropna().unique()])
+    default_variant = "V3_D_V2_CONFIRM" if "V3_D_V2_CONFIRM" in variants else variants[0]
+    dates = sorted([str(d)[:10] for d in selected["signal_date"].dropna().unique()], reverse=True)
+
+    control_cols = st.columns([1.6, 1.1, 1.1, 1.2])
+    with control_cols[0]:
+        variant = st.selectbox("Variant", variants, index=variants.index(default_variant), key="v3_consensus_variant")
+    with control_cols[1]:
+        signal_date = st.selectbox("Signal date", dates, index=0, key="v3_consensus_signal_date")
+
+    overall_variant = overall[overall["v3_variant"].astype(str).eq(variant)]
+    best = overall.sort_values("plus13_before_minus2_d5_rate_pct", ascending=False, na_position="last").head(1)
+    with control_cols[2]:
+        st.metric("Top3 guard", str(validation.get("top3_bad_group_count", 0)))
+    with control_cols[3]:
+        best_label = best["v3_variant"].iloc[0] if not best.empty else "-"
+        st.metric("Best first-touch", best_label)
+
+    if not overall_variant.empty:
+        ov = overall_variant.iloc[0]
+        metric_cols = st.columns(5)
+        metric_cols[0].metric("D5 rows", f"{int(_v3_num(ov.get('complete_d5_rows'), 0) or 0):,}")
+        metric_cols[1].metric("D5 win", _v3_pct(ov.get("d5_close_win_rate_pct")))
+        metric_cols[2].metric("+1.3 first", _v3_pct(ov.get("plus13_before_minus2_d5_rate_pct")))
+        metric_cols[3].metric("D5 close avg", _v3_pct(ov.get("avg_d5_close_return_pct")))
+        metric_cols[4].metric("D5 median", _v3_pct(ov.get("median_d5_close_return_pct")))
+
+    day = selected[
+        selected["v3_variant"].astype(str).eq(variant)
+        & selected["signal_date"].astype(str).str[:10].eq(signal_date)
+    ].copy()
+    if not day.empty:
+        day["_rank"] = pd.to_numeric(day["v3_rank"], errors="coerce")
+        day = day.sort_values("_rank")
+        table = pd.DataFrame(
+            {
+                "Rank": day["v3_rank"].map(lambda x: int(_v3_num(x, 0) or 0)),
+                "Code": day["stock_code"].map(_v3_code),
+                "Name": day["stock_name"].astype(str),
+                "Score": day["total_score"].map(_v3_score),
+                "Sources": day.apply(_v3_sources, axis=1),
+                "Eval source": day["evaluation_source_model_key"].astype(str),
+                "Data": day["data_quality_flag"].astype(str),
+            }
+        )
+        st.dataframe(table, use_container_width=True, hide_index=True)
+
+    with st.expander("점수 breakdown", expanded=False):
+        if score_detail.empty:
+            st.caption("score detail 파일이 없습니다.")
+        else:
+            sd = score_detail[
+                score_detail["v3_variant"].astype(str).eq(variant)
+                & score_detail["signal_date"].astype(str).str[:10].eq(signal_date)
+            ].copy()
+            if sd.empty:
+                st.caption("선택 날짜의 score detail이 없습니다.")
+            else:
+                sd["_rank"] = pd.to_numeric(sd["v3_rank"], errors="coerce")
+                sd = sd.sort_values(["selected_top3", "_rank", "total_score"], ascending=[False, True, False])
+                cols = [
+                    "v3_rank",
+                    "stock_code",
+                    "stock_name",
+                    "selected_top3",
+                    "total_score",
+                    "consensus_score",
+                    "rank_score",
+                    "path_score",
+                    "risk_control_score",
+                    "market_condition_score",
+                    "liquidity_score",
+                    "manual_proxy_score",
+                    "evaluation_source_model_key",
+                    "data_quality_flag",
+                ]
+                view = sd[[c for c in cols if c in sd.columns]].head(40).copy()
+                if "stock_code" in view.columns:
+                    view["stock_code"] = view["stock_code"].map(_v3_code)
+                st.dataframe(view, use_container_width=True, hide_index=True, height=420)
+
+    tabs = st.tabs(["기간 성과", "최근 rolling", "승격 비교", "EOD 겹침", "outlier"])
+    with tabs[0]:
+        show_cols = [
+            "v3_variant",
+            "rows",
+            "complete_d5_rows",
+            "signal_days",
+            "avg_d5_close_return_pct",
+            "median_d5_close_return_pct",
+            "d5_close_win_rate_pct",
+            "plus13_touch_d1_rate_pct",
+            "plus13_touch_d2_rate_pct",
+            "plus13_touch_d3_rate_pct",
+            "plus13_touch_d4_rate_pct",
+            "plus13_touch_d5_rate_pct",
+            "cumulative_plus13_touch_d5_rate_pct",
+            "plus13_before_minus2_d5_rate_pct",
+            "minus2_before_plus13_d5_rate_pct",
+            "same_day_ambiguous_d5_rate_pct",
+            "sample_status",
+        ]
+        st.dataframe(overall[[c for c in show_cols if c in overall.columns]], use_container_width=True, hide_index=True)
+    with tabs[1]:
+        if rolling.empty:
+            st.caption("rolling summary 파일이 없습니다.")
+        else:
+            latest_asof = str(rolling["as_of_date"].max())[:10]
+            roll = rolling[
+                rolling["as_of_date"].astype(str).str[:10].eq(latest_asof)
+                & rolling["period_key"].astype(str).isin(["ROLLING_20TD", "ROLLING_60TD", "ROLLING_120TD"])
+            ]
+            cols = [
+                "v3_variant",
+                "period_key",
+                "as_of_date",
+                "complete_d5_rows",
+                "d5_close_win_rate_pct",
+                "plus13_before_minus2_d5_rate_pct",
+                "avg_d5_close_return_pct",
+                "sample_status",
+                "partial_window",
+            ]
+            st.dataframe(roll[[c for c in cols if c in roll.columns]], use_container_width=True, hide_index=True)
+    with tabs[2]:
+        if threshold_matrix.empty:
+            st.caption("promotion threshold matrix 파일이 없습니다.")
+        else:
+            focus_labels = ["V3-D V2 확인", "V3-C 리스크", "현재 EOD웹훅 Top3", "EOD Top1", "EOD Top3", "V2 하이브리드"]
+            tm = threshold_matrix[threshold_matrix["strategy_label"].astype(str).isin(focus_labels)]
+            st.dataframe(tm, use_container_width=True, hide_index=True)
+    with tabs[3]:
+        if overlap_metrics.empty:
+            st.caption("EOD overlap metrics 파일이 없습니다.")
+        else:
+            st.dataframe(overlap_metrics, use_container_width=True, hide_index=True)
+    with tabs[4]:
+        if outlier.empty:
+            st.caption("outlier audit 파일이 없습니다.")
+        else:
+            st.dataframe(outlier, use_container_width=True, hide_index=True)
+
+    st.caption(f"데이터: `{BELL_V3_CONSENSUS_DIR}`")
 
 
 def load_bell_watch_asof_cards() -> pd.DataFrame:

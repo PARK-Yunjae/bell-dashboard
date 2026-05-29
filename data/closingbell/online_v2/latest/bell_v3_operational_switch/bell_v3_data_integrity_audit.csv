@@ -1,0 +1,7 @@
+﻿check_name,status,evidence
+common_latest_exists,PASS,latest_rows=58
+eod_top3_each_day,PASS,bad_days=0
+v2_top3_each_day,PASS,bad_days=0
+human_top3_each_day,PASS,bad_days=0
+v3_top3_each_day,PASS,bad_days=0
+v3_latest_top3,PASS,latest_v3_rows=3

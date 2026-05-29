@@ -1,0 +1,32 @@
+﻿{
+  "created_at": "2026-05-28T20:42:16",
+  "name": "bell_v3_promotion_deep_dive_20260528",
+  "operation_touched": false,
+  "webhook_send": false,
+  "scheduler_changed": false,
+  "order_or_account_api": false,
+  "active_route_changed": false,
+  "source_inputs": {
+    "v3_selected": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_selected_top3.csv",
+    "v3_candidate": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_candidate_detail.csv",
+    "v3_score": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_consensus_20260528\\csv\\bell_v3_consensus_score_detail.csv",
+    "legacy_detail": "C:\\Coding\\data\\closingbell\\research_index\\multi_strategy_period_compare_v2_20260528\\parquet\\multi_strategy_candidate_detail_v2.parquet"
+  },
+  "outputs": {
+    "summary_compact": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_promotion_summary_compact.csv",
+    "threshold_matrix": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_promotion_d1_d5_threshold_matrix.csv",
+    "individual_day_plus13": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_promotion_individual_day_plus13.csv",
+    "source_freshness": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_source_freshness.csv",
+    "source_composition_by_date": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_source_composition_by_date.csv",
+    "latest20_source_composition": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_latest20_source_composition.csv",
+    "eod_overlap_daily": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_eod_overlap_daily.csv",
+    "eod_overlap_strategy_metrics": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_eod_overlap_strategy_metrics.csv",
+    "score_bucket_analysis": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_score_bucket_analysis.csv",
+    "common20_compare": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_common20_compare.csv",
+    "common60_compare": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_common60_compare.csv",
+    "common120_compare": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_common120_compare.csv",
+    "promotion_readiness_gates": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\csv\\bell_v3_promotion_readiness_gates.csv",
+    "report": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\reports\\bell_v3_promotion_deep_dive_report.md",
+    "manifest": "C:\\Coding\\data\\closingbell\\research_index\\bell_v3_promotion_deep_dive_20260528\\manifest.json"
+  }
+}

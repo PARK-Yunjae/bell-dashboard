@@ -1,0 +1,11 @@
+﻿source,flag,rows,signal_days,date_min,date_max,eod_latest_date,latest_date_rows,stale_calendar_days_vs_eod_latest,freshness_status
+EOD Active,in_eod_active_top3,843,281,2025-04-02,2026-05-28,2026-05-28,3,0,OK
+V2 Hybrid,in_v2_hybrid_top3,759,253,2025-04-29,2026-05-14,2026-05-28,0,14,STALE_OR_MISSING
+Human Proxy,in_eod_human_proxy_a,275,275,2025-04-02,2026-05-19,2026-05-28,0,9,STALE_OR_MISSING
+EOD Top1,in_eod_mechanical_top1,275,275,2025-04-02,2026-05-19,2026-05-28,0,9,STALE_OR_MISSING
+Daily3,in_daily3_pool_top3,828,276,2025-04-01,2026-05-19,2026-05-28,0,9,STALE_OR_MISSING
+P0,in_p0_trading_value_top3,753,251,2025-04-29,2026-05-13,2026-05-28,0,15,STALE_OR_MISSING
+Legacy,in_legacy_classic_webhook_top3,755,252,2025-04-29,2026-05-13,2026-05-28,0,15,STALE_OR_MISSING
+V2 Record,in_v2_record_top3,733,251,2025-04-29,2026-05-13,2026-05-28,0,15,STALE_OR_MISSING
+BellGuard PriceCap,in_bellguard_pricecap_top3,714,216,2025-04-30,2026-05-13,2026-05-28,0,15,STALE_OR_MISSING
+BellGuard D0Strict,in_bellguard_d0_strict_top3,768,256,2025-04-29,2026-05-19,2026-05-28,0,9,STALE_OR_MISSING
