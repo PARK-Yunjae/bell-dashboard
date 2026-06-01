@@ -2,6 +2,6 @@
 
 source_freshness=PASS
 
-1. 나무기술 (242040) score=62.95 grade=B sources=V2,Human
-2. 한온시스템 (018880) score=56.35 grade=B sources=Human
-3. LG디스플레이 (034220) score=55.75 grade=B sources=Human
+1. LG디스플레이 (034220) score=81.30 grade=A sources=EOD,V2,Human
+2. 제주반도체 (080220) score=56.70 grade=B sources=EOD,V2
+3. 삼성공조 (006660) score=55.58 grade=B sources=Human

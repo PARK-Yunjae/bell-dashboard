@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ClosingBell V3 UX v2</title><style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; max-width: 100%; overflow-x: hidden; background: #f5f6f8; color: #17202a; }
+    body { font-family: "Malgun Gothic", "Apple SD Gothic Neo", Arial, sans-serif; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere; }
+    main { width: 100%; max-width: min(1180px, 100vw); margin: 0 auto; padding: 24px; overflow-x: hidden; }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    h2 { font-size: 20px; margin: 0 0 10px; }
+    h3 { font-size: 17px; margin: 0 0 8px; }
+    p { margin: 0 0 8px; }
+    .notice, .card { background: #fff; border: 1px solid #d9dee7; border-radius: 8px; padding: 16px; overflow-wrap: anywhere; max-width: 100%; }
+    .notice { border-left: 5px solid #344054; margin: 12px 0 18px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; width: 100%; min-width: 0; }
+    .card { min-width: 0; border-top-width: 5px; }
+    .stable { border-top-color: #1f8a5b; }
+    .attack { border-top-color: #b66a00; }
+    .watch { border-top-color: #bb2d3b; }
+    .muted { color: #667085; font-size: 14px; }
+    .stock { border-top: 1px solid #e4e7ec; padding-top: 12px; margin-top: 12px; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .badge { display: inline-block; border: 1px solid #d9dee7; border-radius: 999px; padding: 3px 8px; font-size: 12px; background: #f8fafc; overflow-wrap: anywhere; }
+    .risk-low { background: #e7f7ef; border-color: #9bd9bc; }
+    .risk-caution { background: #fff6db; border-color: #f4d675; }
+    .risk-high { background: #ffe8e8; border-color: #f5a3a3; }
+    .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+    ul { padding-left: 18px; margin: 6px 0 0; }
+    li { margin: 3px 0; }
+    @media (max-width: 760px) {
+      html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+      main { width: min(100%, 390px); max-width: 390px; margin: 0; padding: 14px; }
+      h1 { font-size: 23px; }
+      .grid { grid-template-columns: minmax(0, 1fr); }
+      .detail-grid { grid-template-columns: 1fr; }
+      .card, .notice { width: 100%; max-width: 100%; min-width: 0; }
+      .card p, .card li, .notice p, .muted, .stock h3, .badge { font-size: 14px; max-width: 100%; overflow-wrap: anywhere; word-break: keep-all; }
+      .stock h3 { display: flex; flex-wrap: wrap; gap: 3px 6px; align-items: baseline; }
+    }
+    </style></head>
+<body><main>
+<h1>ClosingBell V3 Paper Watch v2</h1>
+<p class="muted">2026-05-29 15:00 기준 / 종이관찰 전용</p>
+<section class="notice"><h3>6월 모드</h3><p>JLPT 시험 준비 기간입니다. 오늘 후보는 Paper Watch용이며, 실제 매매는 소액·1종목 이하·짧은 기록만 권장합니다.</p><p class="muted">자동매매, 주문 API, 계좌 API 없음. D+5 결과는 실시간 웹훅과 메인 카드에 표시하지 않음.</p></section>
+<div class="grid"><section class='card stable'><h2>🟢 안정형</h2><p>위험을 줄인 후보</p><p class='muted'>+2% 선도달률 54.0% / -2% 터치율 76.3%</p><div class='stock'><h3>1. 한온시스템 <span class='muted'>018880</span></h3><p>상위 시간봉 흐름이 무난하고 핵심 위험 태그가 낮은 안정 관찰 후보입니다.</p><div class='badge-row'><span class='badge'>눌림 지지 확인용</span><span class='badge risk-low'>위험 낮음</span></div></div><div class='stock'><h3>2. LG디스플레이 <span class='muted'>034220</span></h3><p>주봉·월봉은 무난하지만 일부 과열/고점 감점조건을 함께 확인해야 합니다.</p><div class='badge-row'><span class='badge'>지지 확인 후 판단</span><span class='badge risk-caution'>주의</span></div></div><div class='stock'><h3>3. 이수화학 <span class='muted'>005950</span></h3><p>상위 시간봉은 양호하지만 점수와 위험조건을 함께 보는 보조 안정 후보입니다.</p><div class='badge-row'><span class='badge'>비교 관찰용</span><span class='badge risk-caution'>주의</span></div></div></section><section class='card attack'><h2>🟠 공격형</h2><p>회복/돌파 가능성 포착</p><p class='muted'>+2% 선도달률 54.0% / -2% 터치율 77.0%</p><div class='stock'><h3>나무기술 <span class='muted'>242040</span></h3><p>관찰형으로 이동: 돌파는 강하지만 고위험</p></div><div class='stock'><h3>한온시스템 <span class='muted'>018880</span></h3><p>안정형으로 이동: 공격형 비교 기준</p></div><div class='stock'><h3>LG디스플레이 <span class='muted'>034220</span></h3><p>안정형으로 이동: 조건부 관찰</p></div></section><section class='card watch'><h2>🔴 관찰형</h2><p>위험 태그가 큰 움직임 기록 후보</p><p class='muted'>+2% 선도달률 50.9% / -2% 터치율 82.2%</p><div class='stock'><h3>1. 나무기술 <span class='muted'>242040</span></h3><p>거래량과 돌파 흐름은 강하지만 과열·고점 위험이 커서 관찰형으로 분리합니다.</p><div class='badge-row'><span class='badge'>매수보다 기록</span><span class='badge risk-high'>고위험</span></div></div><div class='stock'><h3>2. 한성크린텍 <span class='muted'>066980</span></h3><p>상위 시간봉은 좋아 보이지만 위험 태그가 커서 매수보다 관찰 우선입니다.</p><div class='badge-row'><span class='badge'>매수 제외 관찰</span><span class='badge risk-high'>고위험</span></div></div><div class='stock'><h3>3. 엑스게이트 <span class='muted'>356680</span></h3><p>후보군 안에서 포착됐지만 과열/고점 주의가 필요한 관찰 후보입니다.</p><div class='badge-row'><span class='badge'>변동성 기록</span><span class='badge risk-caution'>주의</span></div></div></section></div>
+<section class="card" style="margin-top:16px;">
+<h2>종목 상세 예시: 나무기술 242040</h2>
+<p>거래량과 돌파 흐름은 강하지만 과열·고점 위험이 커서 관찰형으로 분리합니다.</p>
+<div class="badge-row"><span class="badge risk-high">고위험</span><span class='badge'>공격형에도 포착됨</span></div>
+<div class="detail-grid">
+<div><h3>오늘 왜 뽑혔나</h3><ul><li>V3 기본점수 최상위</li><li>주봉 돌파 + 거래량</li><li>단기 관심이 강하게 붙은 후보</li></ul><h3>위험한 점</h3><ul><li>핵심 위험조건 있음</li><li>과열/고점 감점조건 있음</li><li>먼저 -2%를 맞을 수 있음</li></ul></div>
+<div><h3>지금 자리 해석</h3><p>관심은 높지만 바로 추격보다 눌림 확인이 필요합니다.</p><h3>최종 판정</h3><p><b>매수 후보가 아니라 움직임 기록용 관찰 후보입니다.</b></p></div>
+</div>
+</section>
+</main></body></html>

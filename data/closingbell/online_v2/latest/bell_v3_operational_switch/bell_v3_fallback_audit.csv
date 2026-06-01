@@ -1,5 +1,4 @@
 ﻿signal_date,active_variant,selected_count,eod_count,v2_count,human_count,eod_only_count,all_eod_only_day,source_freshness,fallback_blocked_operational,latest20_all_eod_only_day_rate_pct
-2025-04-02,V3_C_RISK_CONTROL,3,1,2,0,1,False,PASS,False,0.0
 2025-04-03,V3_C_RISK_CONTROL,3,1,1,2,0,False,PASS,False,0.0
 2025-04-04,V3_C_RISK_CONTROL,3,0,3,2,0,False,PASS,False,0.0
 2025-04-07,V3_C_RISK_CONTROL,3,0,3,2,0,False,PASS,False,0.0
@@ -281,3 +280,4 @@
 2026-05-27,V3_C_RISK_CONTROL,3,0,1,3,0,False,PASS,False,0.0
 2026-05-28,V3_C_RISK_CONTROL,3,1,0,3,0,False,PASS,False,0.0
 2026-05-29,V3_C_RISK_CONTROL,3,0,1,3,0,False,PASS,False,0.0
+2026-06-01,V3_C_RISK_CONTROL,3,2,2,2,0,False,PASS,False,0.0

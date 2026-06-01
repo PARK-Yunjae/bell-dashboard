@@ -1,0 +1,12 @@
+﻿column,label,type,required,description
+date,기록일,date,Y,후보가 나온 날짜 또는 감 기록을 남긴 날짜
+stock_code,종목코드,text,Y,6자리 종목코드
+stock_name,종목명,text,Y,사용자가 확인한 종목명
+mode_ko,보기,select,Y,"안정형, 공격형, 관찰형 중 화면에 표시된 대표 보기"
+yj_feeling,내 감,select,Y,"괜찮아 보임, 애매함, 위험해 보임 등 첫 느낌"
+yj_reason,감 이유,select_or_text,N,"거래량, 위치, 뉴스, 추격감 등 판단 이유"
+planned_action,계획,select,Y,"보기만 함, 알림만, 소액 확인, 제외"
+actual_action,실제 행동,select_or_text,N,사후에 실제로 한 행동
+entry_price,진입가,number_or_blank,N,Paper Watch 또는 수동 기록용 진입가
+exit_price,청산가,number_or_blank,N,Paper Watch 또는 수동 기록용 청산가
+result_note,결과 메모,textarea,N,사후 복기용 짧은 메모

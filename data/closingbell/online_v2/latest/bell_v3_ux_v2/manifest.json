@@ -1,0 +1,13 @@
+{
+  "schema": "closingbell.v3.ux_v2_manifest",
+  "generated_at": "2026-05-31T21:54:31",
+  "signal_date": "2026-05-29",
+  "version": "v2",
+  "paper_watch_only": true,
+  "orders_enabled": false,
+  "account_api_enabled": false,
+  "payload": "bell_v3_dashboard_payload_v2_sample_20260531_v2.json",
+  "webhook_payload": "bell_v3_webhook_embed_payload_sample_20260531_v2.json",
+  "sense_log_schema": "bell_v3_yj_sense_log_schema_20260531_v2.csv",
+  "sense_log_sample": "bell_v3_yj_sense_log_sample_20260531_v2.csv"
+}

@@ -1,5 +1,5 @@
 ﻿check_name,status,evidence
-common_latest_exists,PASS,latest_rows=58
+common_latest_exists,PASS,latest_rows=52
 eod_top3_each_day,PASS,bad_days=0
 v2_top3_each_day,PASS,bad_days=0
 human_top3_each_day,PASS,bad_days=0

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 import os
 from datetime import datetime, time, timedelta
@@ -40,6 +41,7 @@ SIM = CLOSINGBELL / "simulations"
 QUALITY = CLOSINGBELL / "quality"
 BACKTEST_ROOT = CLOSINGBELL / "backtests"
 USER_NOTES_PATH = CLOSINGBELL / "user_notes" / "one_year_review_notes.csv"
+YJ_SENSE_LOG_DIR = CLOSINGBELL / "user_notes"
 DOCS = ROOT / "docs" / "closingbell"
 DAILY = DATA / "market" / "daily_ohlcv"
 MINUTE = DATA / "market" / "minute_ohlcv"
@@ -112,6 +114,7 @@ BELL_WATCH_MANUAL_VS_MECH_DIR = ONLINE_V2_DIR / "bell_watch_manual_vs_mechanical
 BELL_V3_CONSENSUS_DIR = ONLINE_V2_DIR / "bell_v3_consensus"
 BELL_V3_PROMOTION_DIR = ONLINE_V2_DIR / "bell_v3_promotion_deep_dive"
 BELL_V3_OPERATIONAL_DIR = ONLINE_V2_DIR / "bell_v3_operational_switch"
+BELL_V3_UX_V2_DIR = ONLINE_V2_DIR / "bell_v3_ux_v2"
 # Paper Watch 사후 라벨링 데이터 — Codex retro labeling 산출 (2026-05-20)
 # online 사본 우선, 없으면 shared 원본 fallback (publish 시 동기화될 예정)
 EOD_PAPER_WATCH_DIRS: list[Path] = [
@@ -9431,6 +9434,20 @@ def load_bell_v3_operational_manifest() -> dict[str, Any]:
     return _load_bell_watch_json_cached(str(p), _bell_watch_mtime_ns(p))
 
 
+def load_bell_v3_ux_v2_manifest() -> dict[str, Any]:
+    p = BELL_V3_UX_V2_DIR / "manifest.json"
+    return _load_bell_watch_json_cached(str(p), _bell_watch_mtime_ns(p))
+
+
+def load_bell_v3_ux_v2_payload() -> dict[str, Any]:
+    manifest = load_bell_v3_ux_v2_manifest()
+    filename = "bell_v3_dashboard_payload_v2_sample_20260531_v2.json"
+    if isinstance(manifest, dict) and manifest.get("payload"):
+        filename = str(manifest["payload"])
+    p = BELL_V3_UX_V2_DIR / filename
+    return _load_bell_watch_json_cached(str(p), _bell_watch_mtime_ns(p))
+
+
 def _v3_num(value: Any, default: float | None = None) -> float | None:
     try:
         if value is None or pd.isna(value):
@@ -9929,6 +9946,239 @@ def _render_mvm_strategy_card(row: dict[str, Any]) -> None:
     )
 
 
+def _ux_v2_escape(value: Any) -> str:
+    return html.escape(str(value or ""), quote=True)
+
+
+def _ux_v2_risk_class(label: Any) -> str:
+    text = str(label or "")
+    if text == "위험 낮음":
+        return "risk-low"
+    if text == "주의":
+        return "risk-caution"
+    return "risk-high"
+
+
+def _ux_v2_list_html(items: Any) -> str:
+    if not isinstance(items, list) or not items:
+        return "<p class='uxv2-muted'>-</p>"
+    return "<ul>" + "".join(f"<li>{_ux_v2_escape(item)}</li>" for item in items) + "</ul>"
+
+
+def _ux_v2_badges(labels: list[Any]) -> str:
+    if not labels:
+        return ""
+    return "".join(f"<span class='uxv2-badge'>{_ux_v2_escape(label)}</span>" for label in labels if str(label or "").strip())
+
+
+def _ux_v2_card_html(card: dict[str, Any]) -> str:
+    mode = str(card.get("mode") or "watch")
+    if mode == "attack":
+        body = "".join(
+            "<div class='uxv2-stock'>"
+            f"<b>{_ux_v2_escape(item.get('stock_name'))}</b> "
+            f"<span class='uxv2-muted'>{_ux_v2_escape(item.get('stock_code'))}</span>"
+            f"<p>{_ux_v2_escape(item.get('moved_to'))}으로 이동: {_ux_v2_escape(item.get('reason'))}</p>"
+            "</div>"
+            for item in card.get("moved_items", [])
+        )
+    else:
+        body = "".join(
+            "<div class='uxv2-stock'>"
+            f"<b>{_ux_v2_escape(item.get('rank'))}. {_ux_v2_escape(item.get('stock_name'))}</b> "
+            f"<span class='uxv2-muted'>{_ux_v2_escape(item.get('stock_code'))}</span>"
+            f"<p>{_ux_v2_escape(item.get('summary'))}</p>"
+            "<div class='uxv2-badge-row'>"
+            f"<span class='uxv2-badge'>{_ux_v2_escape(item.get('entry_style'))}</span>"
+            f"<span class='uxv2-badge {_ux_v2_risk_class(item.get('risk_label'))}'>{_ux_v2_escape(item.get('risk_label'))}</span>"
+            "</div>"
+            "</div>"
+            for item in card.get("top_items", [])
+        )
+    return (
+        f"<section class='uxv2-card uxv2-{_ux_v2_escape(mode)}'>"
+        f"<h3>{_ux_v2_escape(card.get('title'))}</h3>"
+        f"<p>{_ux_v2_escape(card.get('subtitle'))}</p>"
+        f"<p class='uxv2-muted'>{_ux_v2_escape(card.get('similar_tag_summary'))}</p>"
+        f"{body}</section>"
+    )
+
+
+def _append_yj_sense_log(payload: dict[str, Any], row: dict[str, Any]) -> Path:
+    columns = payload.get("sense_log", {}).get("columns") if isinstance(payload, dict) else None
+    if not isinstance(columns, list) or not columns:
+        columns = [
+            "date",
+            "stock_code",
+            "stock_name",
+            "mode_ko",
+            "yj_feeling",
+            "yj_reason",
+            "planned_action",
+            "actual_action",
+            "entry_price",
+            "exit_price",
+            "result_note",
+        ]
+    date_digits = "".join(ch for ch in str(row.get("date") or "") if ch.isdigit())[:8]
+    if len(date_digits) != 8:
+        date_digits = datetime.now().strftime("%Y%m%d")
+    path = YJ_SENSE_LOG_DIR / f"yj_sense_log_{date_digits}.csv"
+
+    clean_row = {col: str(row.get(col, "") or "") for col in columns}
+    if path.exists():
+        try:
+            df = pd.read_csv(path, dtype=str).fillna("")
+        except Exception:  # noqa: BLE001
+            df = pd.DataFrame(columns=columns)
+    else:
+        df = pd.DataFrame(columns=columns)
+    for col in columns:
+        if col not in df.columns:
+            df[col] = ""
+    df = df.reindex(columns=columns)
+    df = pd.concat([df, pd.DataFrame([clean_row])], ignore_index=True)
+    write_user_note_atomic(path, df)
+    return path
+
+
+def render_bell_v3_ux_v2_tab() -> None:
+    payload = load_bell_v3_ux_v2_payload()
+    if not payload:
+        st.info("V3 UX v2 payload가 아직 없습니다. bell_v3_ux_v2 산출물을 먼저 생성해 주세요.")
+        return
+
+    st.markdown(
+        """
+        <style>
+        .uxv2-card {background:#fff; border:1px solid #d9dee7; border-top-width:5px; border-radius:8px; padding:14px; margin-bottom:12px; overflow-wrap:anywhere;}
+        .uxv2-stable {border-top-color:#1f8a5b;}
+        .uxv2-attack {border-top-color:#b66a00;}
+        .uxv2-watch {border-top-color:#bb2d3b;}
+        .uxv2-stock {border-top:1px solid #e4e7ec; padding-top:10px; margin-top:10px;}
+        .uxv2-muted {color:#667085; font-size:0.88rem;}
+        .uxv2-badge-row {display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+        .uxv2-badge {display:inline-block; border:1px solid #d9dee7; border-radius:999px; padding:2px 8px; background:#f8fafc; font-size:0.80rem;}
+        .risk-low {background:#e7f7ef; border-color:#9bd9bc;}
+        .risk-caution {background:#fff6db; border-color:#f4d675;}
+        .risk-high {background:#ffe8e8; border-color:#f5a3a3;}
+        .uxv2-final {border-left:4px solid #344054; background:#f8fafc; padding:10px 12px; border-radius:6px;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    signal_date = str(payload.get("signal_date") or "-")
+    st.markdown("### ClosingBell V3 UX v2")
+    st.caption(f"{signal_date} 기준 · Paper Watch only · 자동매매/주문 API/계좌 API 없음")
+    june_notice = str(payload.get("june_mode_notice") or "")
+    if june_notice:
+        st.info(june_notice)
+    st.caption("실시간 웹훅과 메인 카드에는 D+5 결과를 표시하지 않습니다. D+5 중앙값은 상세/사후 리뷰용으로만 보입니다.")
+
+    cards = payload.get("main_cards", [])
+    if isinstance(cards, list) and cards:
+        cols = st.columns(min(3, len(cards)))
+        for idx, card in enumerate(cards):
+            with cols[idx % len(cols)]:
+                st.markdown(_ux_v2_card_html(card), unsafe_allow_html=True)
+
+    details = payload.get("stock_details", [])
+    if not isinstance(details, list) or not details:
+        return
+
+    st.markdown("### 종목 상세")
+    selected_idx = st.selectbox(
+        "종목 선택",
+        options=list(range(len(details))),
+        format_func=lambda i: (
+            f"{details[i].get('primary_mode_ko', '-')}"
+            f" · {details[i].get('stock_name', '-')}"
+            f" ({details[i].get('stock_code', '-')})"
+        ),
+    )
+    stock = details[selected_idx]
+    secondary = [item.get("label") for item in stock.get("secondary_modes", []) if isinstance(item, dict)]
+    st.markdown(
+        "<div class='uxv2-card'>"
+        f"<h3>{_ux_v2_escape(stock.get('stock_name'))} {_ux_v2_escape(stock.get('stock_code'))}</h3>"
+        f"<p>{_ux_v2_escape(stock.get('summary'))}</p>"
+        "<div class='uxv2-badge-row'>"
+        f"<span class='uxv2-badge'>{_ux_v2_escape(stock.get('primary_mode_ko'))}</span>"
+        f"<span class='uxv2-badge {_ux_v2_risk_class(stock.get('risk_label'))}'>{_ux_v2_escape(stock.get('risk_label'))}</span>"
+        f"{_ux_v2_badges(secondary)}"
+        "</div></div>",
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown("#### 오늘 왜 뽑혔나")
+        st.markdown(_ux_v2_list_html(stock.get("why_selected")), unsafe_allow_html=True)
+        st.markdown("#### 좋은 점")
+        st.markdown(_ux_v2_list_html(stock.get("good_points")), unsafe_allow_html=True)
+        st.markdown("#### 위험한 점")
+        st.markdown(_ux_v2_list_html(stock.get("risk_points")), unsafe_allow_html=True)
+    with right:
+        st.markdown("#### 지금 자리 해석")
+        st.write(stock.get("position_read") or "-")
+        st.markdown("#### 유사태그 성과")
+        stats = stock.get("similar_tag_stats", {}) if isinstance(stock.get("similar_tag_stats"), dict) else {}
+        st.write(
+            f"+2% 선도달률 {stats.get('plus2_before_minus2_pct', '-')}% · "
+            f"-2% 터치율 {stats.get('minus2_touch_pct', '-')}% · "
+            f"표본 {stats.get('sample_count', '-')}"
+        )
+        if stats.get("d5_visible_in_detail"):
+            st.caption(f"D+5 중앙값 {stats.get('d5_median_pct', '-')}% · 상세/사후 리뷰용")
+        st.markdown("#### 최종 판정")
+        st.markdown(f"<div class='uxv2-final'><b>{_ux_v2_escape(stock.get('final_judgement'))}</b></div>", unsafe_allow_html=True)
+
+    st.markdown("#### 매수 전 체크리스트")
+    checklist = stock.get("pre_entry_checklist", [])
+    if isinstance(checklist, list):
+        for idx, item in enumerate(checklist):
+            st.checkbox(str(item), key=f"uxv2_check_{stock.get('stock_code')}_{idx}")
+
+    st.markdown("#### 내 감 기록")
+    sense = payload.get("sense_log", {}) if isinstance(payload.get("sense_log"), dict) else {}
+    feeling_options = sense.get("feeling_options") or ["괜찮아 보임", "애매함", "위험해 보임"]
+    reason_options = sense.get("reason_options") or ["가격 위치", "거래량", "뉴스/테마", "추격감", "잘 모르겠음"]
+    action_options = sense.get("planned_action_options") or ["보기만 함", "알림만", "소액 확인", "제외"]
+    with st.form(f"uxv2_sense_log_{stock.get('stock_code')}"):
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            log_date = st.text_input("기록일", value=str(stock.get("date") or signal_date))
+            yj_feeling = st.selectbox("내 감", feeling_options)
+        with c2:
+            yj_reason = st.selectbox("감 이유", reason_options)
+            planned_action = st.selectbox("계획", action_options)
+        with c3:
+            actual_action = st.text_input("실제 행동", value="")
+            entry_price = st.text_input("진입가", value="")
+            exit_price = st.text_input("청산가", value="")
+        result_note = st.text_area("결과 메모", value="", height=80)
+        submitted = st.form_submit_button("감 기록 저장")
+    if submitted:
+        out = _append_yj_sense_log(
+            payload,
+            {
+                "date": log_date,
+                "stock_code": stock.get("stock_code", ""),
+                "stock_name": stock.get("stock_name", ""),
+                "mode_ko": stock.get("primary_mode_ko", ""),
+                "yj_feeling": yj_feeling,
+                "yj_reason": yj_reason,
+                "planned_action": planned_action,
+                "actual_action": actual_action,
+                "entry_price": entry_price,
+                "exit_price": exit_price,
+                "result_note": result_note,
+            },
+        )
+        st.success(f"감 기록 저장 완료: {out}")
+
+
 def render_bell_watch_manual_review_tab() -> None:
     """Bell Watch 수동검증 — read-only 연구/복기 화면.
 
@@ -10238,14 +10488,16 @@ def main() -> None:
             '</div>',
             unsafe_allow_html=True,
         )
-        tabs = st.tabs(["오늘", "복기", "수동검증", "메모"])
+        tabs = st.tabs(["오늘", "V3 UX", "복기", "수동검증", "메모"])
         with tabs[0]:
             render_today_tab(online=True)
         with tabs[1]:
-            render_replay_tab(online=True)
+            render_bell_v3_ux_v2_tab()
         with tabs[2]:
-            render_bell_watch_manual_review_tab()
+            render_replay_tab(online=True)
         with tabs[3]:
+            render_bell_watch_manual_review_tab()
+        with tabs[4]:
             render_notes_browser()
         return
 
@@ -10256,14 +10508,16 @@ def main() -> None:
     score = read_csv(str(SCORE_PATH))
     scan = read_json(str(SECRET_SCAN_SUMMARY))
 
-    tabs = st.tabs(["오늘", "복기", "수동검증", "메모"])
+    tabs = st.tabs(["오늘", "V3 UX", "복기", "수동검증", "메모"])
     with tabs[0]:
         render_today_tab(online=False, d0_pool=d0_pool, score=score, picks=picks, scan=scan)
     with tabs[1]:
-        render_replay_tab(online=False, score=score, enriched=enriched)
+        render_bell_v3_ux_v2_tab()
     with tabs[2]:
-        render_bell_watch_manual_review_tab()
+        render_replay_tab(online=False, score=score, enriched=enriched)
     with tabs[3]:
+        render_bell_watch_manual_review_tab()
+    with tabs[4]:
         render_notes_browser()
 
 
